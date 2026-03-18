@@ -128,7 +128,25 @@
     .toast-item.danger  { border-left:3px solid var(--red); }
     @keyframes toastIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
-    @media(max-width:900px) { .stats-grid{grid-template-columns:repeat(2,1fr)} .quick-grid{grid-template-columns:repeat(2,1fr)} }
+    /* DOCUMENT ITEMS */
+    .doc-items-section { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:14px; }
+    .doc-items-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .btn-add-item { background:var(--primary); border:none; border-radius:8px; padding:6px 14px; color:#fff; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.15s; }
+    .btn-add-item:hover { background:#254d7a; }
+    .doc-items-table { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff; }
+    .doc-items-head { display:grid; grid-template-columns:2fr 100px 120px 110px 40px; padding:8px 12px; background:var(--primary); }
+    .doc-items-head span { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:rgba(255,255,255,0.75); font-weight:600; }
+    .doc-item-row { display:grid; grid-template-columns:2fr 100px 120px 110px 40px; padding:8px 10px; border-top:1px solid var(--border); align-items:center; gap:6px; }
+    .doc-item-row select, .doc-item-row input { border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:13px; width:100%; background:#f8fafc; color:var(--text); }
+    .doc-item-row select:focus, .doc-item-row input:focus { border-color:var(--primary); outline:none; background:#fff; }
+    .doc-item-subtotal { font-weight:700; color:#b8700a; font-size:13px; }
+    .btn-del-item { width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+    .btn-del-item:hover { border-color:var(--red); color:var(--red); background:#fef2f2; }
+    .doc-total-row { display:flex; justify-content:flex-end; align-items:center; gap:12px; padding-top:10px; font-weight:700; font-size:15px; }
+    .doc-total-val { color:var(--primary); font-size:18px; }
+    .doc-items-empty { padding:24px; text-align:center; color:var(--muted); font-size:13px; }
+
+    @media(max-width:900px) { .stats-grid{grid-template-columns:repeat(2,1fr)} .quick-grid{grid-template-columns:repeat(2,1fr)} .doc-items-head,.doc-item-row{grid-template-columns:2fr 80px 90px 90px 36px} }
   </style>
 </head>
 <body>
@@ -333,14 +351,94 @@
 
   <!-- ENTRADAS -->
   <div class="section" id="section-entradas">
-    <div class="page-header"><div class="page-title"><i class="bi bi-box-arrow-in-down" style="color:#22c55e"></i>Entradas de Almacén</div></div>
-    <div class="placeholder-card"><i class="bi bi-box-arrow-in-down" style="color:#22c55e;opacity:1;font-size:52px;"></i><h3>Entradas de Almacén</h3><p>Módulo de registro de entradas. Disponible en la siguiente fase.</p><div class="badge-soon">Próximamente</div></div>
+    <div class="page-header">
+      <div><div class="page-title"><i class="bi bi-box-arrow-in-down" style="color:#22c55e"></i>Entradas de Almacén</div><div class="page-sub">Registro de entradas de mercancía</div></div>
+      <button class="btn-save" onclick="toggleDocForm('entradas')" id="btn-nueva-entrada"><i class="bi bi-plus-lg me-1"></i>Nueva Entrada</button>
+    </div>
+
+    <!-- Formulario entrada -->
+    <div class="form-card" id="form-card-entradas" style="display:none">
+      <div class="form-card-label"><span>+</span> <span id="form-entradas-title">Nueva Entrada</span></div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Folio</label><input class="form-control" id="ent-folio" placeholder="ENT-001" /></div>
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Fecha *</label><input class="form-control" id="ent-fecha" type="date" required /></div>
+        <div class="col-md-3"><label class="form-label small fw-semibold text-muted mb-1">Proveedor</label><select class="form-select" id="ent-proveedor_id"><option value="">— Sin proveedor —</option></select></div>
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Concepto</label><select class="form-select" id="ent-concepto_id"><option value="">— Sin concepto —</option></select></div>
+        <div class="col-md-3"><label class="form-label small fw-semibold text-muted mb-1">Descripción</label><input class="form-control" id="ent-descripcion" placeholder="Descripción del documento" /></div>
+      </div>
+
+      <!-- Partidas -->
+      <div class="doc-items-section">
+        <div class="doc-items-header">
+          <span class="fw-semibold" style="font-size:13px">Partidas del documento</span>
+          <button type="button" class="btn-add-item" onclick="addItem('entradas')"><i class="bi bi-plus"></i> Agregar partida</button>
+        </div>
+        <div class="doc-items-table">
+          <div class="doc-items-head"><span>Producto</span><span>Cantidad</span><span>Precio Unit.</span><span>Subtotal</span><span></span></div>
+          <div id="items-entradas"></div>
+        </div>
+        <div class="doc-total-row">
+          <span>Total:</span><span id="total-entradas" class="doc-total-val">$0.00</span>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn-save" onclick="guardarDocumento('entradas')"><i class="bi bi-save me-1"></i>Guardar Entrada</button>
+        <button class="btn-cancel" onclick="toggleDocForm('entradas')"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Lista de entradas -->
+    <div class="data-table">
+      <div class="dt-head" style="grid-template-columns:60px 90px 100px 1fr 1fr 110px 80px"><span>#</span><span>Folio</span><span>Fecha</span><span>Proveedor</span><span>Descripción</span><span>Total</span><span>Acciones</span></div>
+      <div id="tabla-entradas"><div class="dt-loading"><div class="spinner"></div>Cargando…</div></div>
+    </div>
   </div>
 
   <!-- SALIDAS -->
   <div class="section" id="section-salidas">
-    <div class="page-header"><div class="page-title"><i class="bi bi-box-arrow-up" style="color:#ef4444"></i>Salidas de Almacén</div></div>
-    <div class="placeholder-card"><i class="bi bi-box-arrow-up" style="color:#ef4444;opacity:1;font-size:52px;"></i><h3>Salidas de Almacén</h3><p>Módulo de registro de salidas. Disponible en la siguiente fase.</p><div class="badge-soon">Próximamente</div></div>
+    <div class="page-header">
+      <div><div class="page-title"><i class="bi bi-box-arrow-up" style="color:#ef4444"></i>Salidas de Almacén</div><div class="page-sub">Registro de salidas de mercancía</div></div>
+      <button class="btn-save" onclick="toggleDocForm('salidas')" id="btn-nueva-salida" style="background:linear-gradient(135deg,#dc2626,#b91c1c)"><i class="bi bi-plus-lg me-1"></i>Nueva Salida</button>
+    </div>
+
+    <!-- Formulario salida -->
+    <div class="form-card" id="form-card-salidas" style="display:none">
+      <div class="form-card-label"><span>+</span> <span id="form-salidas-title">Nueva Salida</span></div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Folio</label><input class="form-control" id="sal-folio" placeholder="SAL-001" /></div>
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Fecha *</label><input class="form-control" id="sal-fecha" type="date" required /></div>
+        <div class="col-md-3"><label class="form-label small fw-semibold text-muted mb-1">Destino</label><select class="form-select" id="sal-destino_id"><option value="">— Sin destino —</option></select></div>
+        <div class="col-md-2"><label class="form-label small fw-semibold text-muted mb-1">Concepto</label><select class="form-select" id="sal-concepto_id"><option value="">— Sin concepto —</option></select></div>
+        <div class="col-md-3"><label class="form-label small fw-semibold text-muted mb-1">Descripción</label><input class="form-control" id="sal-descripcion" placeholder="Descripción del documento" /></div>
+      </div>
+
+      <!-- Partidas -->
+      <div class="doc-items-section">
+        <div class="doc-items-header">
+          <span class="fw-semibold" style="font-size:13px">Partidas del documento</span>
+          <button type="button" class="btn-add-item" onclick="addItem('salidas')"><i class="bi bi-plus"></i> Agregar partida</button>
+        </div>
+        <div class="doc-items-table">
+          <div class="doc-items-head"><span>Producto</span><span>Cantidad</span><span>Precio Unit.</span><span>Subtotal</span><span></span></div>
+          <div id="items-salidas"></div>
+        </div>
+        <div class="doc-total-row">
+          <span>Total:</span><span id="total-salidas" class="doc-total-val">$0.00</span>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn-save" style="background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="guardarDocumento('salidas')"><i class="bi bi-save me-1"></i>Guardar Salida</button>
+        <button class="btn-cancel" onclick="toggleDocForm('salidas')"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Lista de salidas -->
+    <div class="data-table">
+      <div class="dt-head" style="grid-template-columns:60px 90px 100px 1fr 1fr 110px 80px"><span>#</span><span>Folio</span><span>Fecha</span><span>Destino</span><span>Descripción</span><span>Total</span><span>Acciones</span></div>
+      <div id="tabla-salidas"><div class="dt-loading"><div class="spinner"></div>Cargando…</div></div>
+    </div>
   </div>
 
   <!-- REPORTE CATÁLOGOS -->
@@ -416,7 +514,8 @@ function showSection(name) {
     productos: loadProductos,
     unidades:  () => loadCatalog('unidades'),
     proveedores: loadProveedores,
-    'reporte-catalogos': loadReporteCatalogos,
+    entradas: loadEntradas,
+    salidas:  loadSalidas,
     'reporte-movimientos': loadReporteMovimientos,
   };
   if (loaders[name]) loaders[name]();
@@ -705,6 +804,191 @@ async function loadReporteMovimientos() {
     else{sEl.innerHTML=`<div class="dt-head" style="grid-template-columns:50px 1fr 1fr 90px"><span>#</span><span>Fecha</span><span>Destino</span><span>Total</span></div>`+
       data.recientes_salidas.map(r=>`<div class="dt-row" style="grid-template-columns:50px 1fr 1fr 90px"><div class="dt-id">${r.id}</div><div>${r.fecha}</div><div class="dt-sub">${r.destino_nombre||'—'}</div><div style="font-weight:700;color:#dc2626">$${parseFloat(r.total||0).toFixed(2)}</div></div>`).join('');}
   } catch(e){ toast(e.message,'danger'); }
+}
+
+// ── Entradas & Salidas ──────────────────────────────────────────────────────
+
+let itemsCounter = { entradas: 0, salidas: 0 };
+let productosCache = [];
+
+async function cargarSelectsDoc(tipo) {
+  try {
+    const [provs, dests, concs, prods] = await Promise.all([
+      api('GET',`${API}/proveedores`), api('GET',`${API}/destinos`),
+      api('GET',`${API}/conceptos`),  api('GET',`${API}/productos`)
+    ]);
+    productosCache = prods;
+    if (tipo === 'entradas') {
+      const sp = document.getElementById('ent-proveedor_id');
+      sp.innerHTML = '<option value="">— Sin proveedor —</option>' + provs.map(p=>`<option value="${p.id}">${p.razon_social}</option>`).join('');
+      const sc = document.getElementById('ent-concepto_id');
+      sc.innerHTML = '<option value="">— Sin concepto —</option>' + concs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+    } else {
+      const sd = document.getElementById('sal-destino_id');
+      sd.innerHTML = '<option value="">— Sin destino —</option>' + dests.map(d=>`<option value="${d.id}">${d.nombre}</option>`).join('');
+      const sc = document.getElementById('sal-concepto_id');
+      sc.innerHTML = '<option value="">— Sin concepto —</option>' + concs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+    }
+  } catch(e) { toast('Error cargando catálogos', 'danger'); }
+}
+
+function toggleDocForm(tipo) {
+  const card = document.getElementById(`form-card-${tipo}`);
+  const visible = card.style.display !== 'none';
+  card.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    // Limpiar
+    document.getElementById(`${tipo==='entradas'?'ent':'sal'}-folio`).value = '';
+    document.getElementById(`${tipo==='entradas'?'ent':'sal'}-fecha`).value = new Date().toISOString().split('T')[0];
+    document.getElementById(`${tipo==='entradas'?'ent':'sal'}-descripcion`).value = '';
+    document.getElementById(`items-${tipo}`).innerHTML = '<div class="doc-items-empty">Agrega partidas con el botón de arriba</div>';
+    document.getElementById(`total-${tipo}`).textContent = '$0.00';
+    itemsCounter[tipo] = 0;
+    cargarSelectsDoc(tipo);
+  }
+}
+
+function addItem(tipo) {
+  const n = ++itemsCounter[tipo];
+  const container = document.getElementById(`items-${tipo}`);
+  const opts = productosCache.map(p=>`<option value="${p.id}" data-precio="${p.precio}">${p.nombre}</option>`).join('');
+  // Quitar mensaje vacío
+  const empty = container.querySelector('.doc-items-empty');
+  if (empty) empty.remove();
+
+  const row = document.createElement('div');
+  row.className = 'doc-item-row';
+  row.id = `item-${tipo}-${n}`;
+  row.innerHTML = `
+    <select onchange="updateItemSubtotal('${tipo}',${n})">
+      <option value="">— Seleccionar producto —</option>${opts}
+    </select>
+    <input type="number" min="1" value="1" id="qty-${tipo}-${n}" oninput="updateItemSubtotal('${tipo}',${n})" />
+    <input type="number" min="0" step="0.01" value="0.00" id="pu-${tipo}-${n}" oninput="updateItemSubtotal('${tipo}',${n})" />
+    <span class="doc-item-subtotal" id="sub-${tipo}-${n}">$0.00</span>
+    <button class="btn-del-item" onclick="removeItem('${tipo}',${n})"><i class="bi bi-trash"></i></button>
+  `;
+  // Al cambiar producto, auto-fill precio
+  row.querySelector('select').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const precio = opt ? parseFloat(opt.dataset.precio||0) : 0;
+    document.getElementById(`pu-${tipo}-${n}`).value = precio.toFixed(2);
+    updateItemSubtotal(tipo, n);
+  });
+  container.appendChild(row);
+}
+
+function updateItemSubtotal(tipo, n) {
+  const qty = parseFloat(document.getElementById(`qty-${tipo}-${n}`)?.value)||0;
+  const pu  = parseFloat(document.getElementById(`pu-${tipo}-${n}`)?.value)||0;
+  const sub = qty * pu;
+  const subEl = document.getElementById(`sub-${tipo}-${n}`);
+  if (subEl) subEl.textContent = `$${sub.toFixed(2)}`;
+  recalcTotal(tipo);
+}
+
+function removeItem(tipo, n) {
+  document.getElementById(`item-${tipo}-${n}`)?.remove();
+  recalcTotal(tipo);
+  if (!document.getElementById(`items-${tipo}`).children.length) {
+    document.getElementById(`items-${tipo}`).innerHTML = '<div class="doc-items-empty">Agrega partidas con el botón de arriba</div>';
+  }
+}
+
+function recalcTotal(tipo) {
+  let total = 0;
+  document.querySelectorAll(`#items-${tipo} .doc-item-subtotal`).forEach(el => {
+    total += parseFloat(el.textContent.replace('$',''))||0;
+  });
+  document.getElementById(`total-${tipo}`).textContent = `$${total.toFixed(2)}`;
+}
+
+function getItems(tipo) {
+  const items = [];
+  document.querySelectorAll(`#items-${tipo} .doc-item-row`).forEach(row => {
+    const sel = row.querySelector('select');
+    const prodId = parseInt(sel?.value);
+    if (!prodId) return;
+    const n = row.id.split('-').pop();
+    const cantidad = parseInt(document.getElementById(`qty-${tipo}-${n}`)?.value)||0;
+    const precio_unitario = parseFloat(document.getElementById(`pu-${tipo}-${n}`)?.value)||0;
+    const prod = productosCache.find(p=>p.id===prodId);
+    items.push({ producto_id:prodId, nombre:prod?.nombre||'', cantidad, precio_unitario, subtotal:cantidad*precio_unitario });
+  });
+  return items;
+}
+
+async function guardarDocumento(tipo) {
+  const pre = tipo === 'entradas' ? 'ent' : 'sal';
+  const fecha = document.getElementById(`${pre}-fecha`).value;
+  if (!fecha) { toast('La fecha es requerida','danger'); return; }
+  const items = getItems(tipo);
+  const total = items.reduce((s,i)=>s+i.subtotal,0);
+
+  const body = tipo === 'entradas' ? {
+    folio: document.getElementById('ent-folio').value.trim(),
+    fecha, descripcion: document.getElementById('ent-descripcion').value.trim(),
+    proveedor_id: document.getElementById('ent-proveedor_id').value||null,
+    concepto_id: document.getElementById('ent-concepto_id').value||null,
+    total, items
+  } : {
+    folio: document.getElementById('sal-folio').value.trim(),
+    fecha, descripcion: document.getElementById('sal-descripcion').value.trim(),
+    destino_id: document.getElementById('sal-destino_id').value||null,
+    concepto_id: document.getElementById('sal-concepto_id').value||null,
+    total, items
+  };
+
+  try {
+    await api('POST', `${API}/${tipo}`, body);
+    toast(`${tipo==='entradas'?'Entrada':'Salida'} registrada ✓`);
+    toggleDocForm(tipo);
+    tipo==='entradas' ? loadEntradas() : loadSalidas();
+  } catch(e) { toast(e.message,'danger'); }
+}
+
+async function loadEntradas() {
+  const el = document.getElementById('tabla-entradas');
+  el.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const data = await api('GET', `${API}/entradas`);
+    if (!data.length) { el.innerHTML='<div class="dt-empty">Sin entradas registradas. Crea la primera.</div>'; return; }
+    el.innerHTML = data.map(r=>`
+      <div class="dt-row" style="grid-template-columns:60px 90px 100px 1fr 1fr 110px 80px">
+        <div class="dt-id">${r.id}</div>
+        <div style="font-weight:600;font-size:12px;color:var(--primary)">${r.folio||'—'}</div>
+        <div style="font-size:13px">${r.fecha||'—'}</div>
+        <div class="dt-sub">${r.proveedor||'—'}</div>
+        <div class="dt-sub">${r.descripcion||'—'}</div>
+        <div style="font-weight:700;color:#15803d">$${parseFloat(r.total||0).toFixed(2)}</div>
+        <div><button class="act-btn danger" onclick="deleteDoc('entradas',${r.id})"><i class="bi bi-trash"></i></button></div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML=`<div class="dt-empty" style="color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadSalidas() {
+  const el = document.getElementById('tabla-salidas');
+  el.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const data = await api('GET', `${API}/salidas`);
+    if (!data.length) { el.innerHTML='<div class="dt-empty">Sin salidas registradas. Crea la primera.</div>'; return; }
+    el.innerHTML = data.map(r=>`
+      <div class="dt-row" style="grid-template-columns:60px 90px 100px 1fr 1fr 110px 80px">
+        <div class="dt-id">${r.id}</div>
+        <div style="font-weight:600;font-size:12px;color:#dc2626">${r.folio||'—'}</div>
+        <div style="font-size:13px">${r.fecha||'—'}</div>
+        <div class="dt-sub">${r.destino||'—'}</div>
+        <div class="dt-sub">${r.descripcion||'—'}</div>
+        <div style="font-weight:700;color:#dc2626">$${parseFloat(r.total||0).toFixed(2)}</div>
+        <div><button class="act-btn danger" onclick="deleteDoc('salidas',${r.id})"><i class="bi bi-trash"></i></button></div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML=`<div class="dt-empty" style="color:var(--red)">${e.message}</div>`; }
+}
+
+async function deleteDoc(tipo, id) {
+  if (!confirm(`¿Eliminar este documento?`)) return;
+  try { await api('DELETE',`${API}/${tipo}/${id}`); toast('Eliminado'); tipo==='entradas'?loadEntradas():loadSalidas(); }
+  catch(e) { toast(e.message,'danger'); }
 }
 
 loadDashboard();
