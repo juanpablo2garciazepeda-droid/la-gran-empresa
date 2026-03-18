@@ -155,15 +155,26 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-// ─── Arranque ────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-initDB()
-  .then(() => {
-    app.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`));
-  })
-  .catch((err) => {
-    console.error("❌ Error al conectar a la BD:", err.message);
-    process.exit(1);
-  });
+// ─── Arranque: local vs Vercel ───────────────────────────────────────────────
+let dbReady = false;
+
+// Middleware que inicializa la BD la primera vez
+app.use(async (req, res, next) => {
+  if (!dbReady) {
+    try {
+      await initDB();
+      dbReady = true;
+    } catch (err) {
+      return res.status(500).json({ error: "No se pudo conectar a la BD: " + err.message });
+    }
+  }
+  next();
+});
+
+// Para desarrollo local
+if (process.env.NODE_ENV !== "production" && require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`));
+}
 
 module.exports = app;
