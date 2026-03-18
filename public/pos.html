@@ -3,533 +3,814 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Punto de Venta – La Gran Empresa</title>
+  <title>POS – La Gran Empresa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
-    @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes ripple { 0% { transform:scale(0); opacity:0.5; } 100% { transform:scale(4); opacity:0; } }
-    .animate-slideIn { animation: slideIn 0.3s ease forwards; }
-    .ripple-effect { position:absolute; border-radius:50%; background:rgba(0,0,0,0.15); width:60px; height:60px; margin-top:-30px; margin-left:-30px; animation:ripple 0.6s linear; pointer-events:none; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #111118;
+      --surface2: #1a1a24;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --gold:     #d4a843;
+      --gold2:    #f0c060;
+      --red:      #e05555;
+      --green:    #4caf7d;
+      --text:     #f0ede8;
+      --muted:    #6b6880;
+      --muted2:   #9896a4;
+      --radius:   16px;
+      --radius-sm:10px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+
+    #root { height: 100vh; display: flex; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 72px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--gold), #b8860b);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 15px; color: #0a0a0f;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(212,168,67,0.3);
+    }
+    .nav-btn {
+      width: 44px; height: 44px;
+      background: transparent; border: none; cursor: pointer;
+      border-radius: 12px; color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; position: relative;
+    }
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .nav-btn.active { background: rgba(212,168,67,0.15); color: var(--gold); }
+    .nav-btn .badge {
+      position: absolute; top: 6px; right: 6px;
+      width: 8px; height: 8px; background: var(--red);
+      border-radius: 50%; border: 2px solid var(--surface);
+    }
+    .nav-divider { width: 32px; height: 1px; background: var(--border); margin: 8px 0; }
+    .back-btn { margin-top: auto; }
+
+    /* ── Layout ── */
+    .main { flex: 1; display: flex; overflow: hidden; }
+    .panel { flex: 1; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+    .panel::-webkit-scrollbar { width: 4px; }
+    .panel::-webkit-scrollbar-track { background: transparent; }
+    .panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+    /* ── Cart Panel ── */
+    .cart-panel {
+      width: 360px; flex-shrink: 0;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .page-header { display: flex; align-items: center; justify-content: space-between; }
+    .page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-sub { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+    /* ── Search ── */
+    .search-wrap { position: relative; }
+    .search-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 16px 12px 44px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--gold); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+
+    /* ── Categories ── */
+    .cats { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cat-btn {
+      padding: 6px 14px; border-radius: 100px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted2); font-size: 12px; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; transition: all 0.18s; white-space: nowrap;
+    }
+    .cat-btn:hover { border-color: var(--border2); color: var(--text); }
+    .cat-btn.active { background: var(--gold); border-color: var(--gold); color: #0a0a0f; font-weight: 600; }
+
+    /* ── Product Grid ── */
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .product-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      cursor: pointer; transition: all 0.2s; text-align: left;
+      position: relative; overflow: hidden;
+    }
+    .product-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(212,168,67,0.04), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .product-card:hover { border-color: rgba(212,168,67,0.3); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .product-card:hover::before { opacity: 1; }
+    .product-card:active { transform: translateY(0); }
+    .product-card.out-of-stock { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+    .prod-emoji { font-size: 24px; margin-bottom: 10px; display: block; }
+    .prod-name { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; margin-bottom: 6px; }
+    .prod-price { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--gold); }
+    .prod-stock { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+    .prod-stock.low { color: var(--red); }
+    .prod-cat-badge {
+      display: inline-block; font-size: 10px; padding: 2px 8px;
+      background: rgba(255,255,255,0.05); border-radius: 100px;
+      color: var(--muted2); margin-bottom: 8px;
+    }
+
+    /* ── Cart ── */
+    .cart-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cart-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+    .cart-count { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+    .cart-items { flex: 1; overflow-y: auto; padding: 12px; }
+    .cart-items::-webkit-scrollbar { width: 3px; }
+    .cart-items::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    .cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--muted); gap: 8px; }
+    .cart-empty span { font-size: 36px; }
+    .cart-empty p { font-size: 13px; }
+
+    .cart-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px; border-radius: var(--radius-sm);
+      transition: background 0.15s; margin-bottom: 4px;
+    }
+    .cart-item:hover { background: var(--surface2); }
+    .cart-item-info { flex: 1; min-width: 0; }
+    .cart-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cart-item-price { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+    .qty-ctrl { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 26px; height: 26px; border-radius: 8px;
+      border: 1px solid var(--border2); background: transparent;
+      color: var(--text); cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .qty-btn:hover { background: var(--surface2); border-color: var(--gold); color: var(--gold); }
+    .qty-btn.del:hover { border-color: var(--red); color: var(--red); }
+    .qty-num { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; width: 20px; text-align: center; }
+    .cart-item-total { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--gold); min-width: 56px; text-align: right; }
+
+    /* ── Totals ── */
+    .cart-footer { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
+    .total-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted2); margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+    .total-row.grand { font-size: 20px; color: var(--text); font-weight: 500; margin: 12px 0 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+    .total-row.grand .val { color: var(--gold); }
+    .total-row.cambio { color: var(--green); margin-top: 8px; }
+
+    .monto-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 15px;
+      outline: none; margin-bottom: 10px; transition: border-color 0.2s;
+    }
+    .monto-input:focus { border-color: var(--gold); }
+    .monto-input::placeholder { color: var(--muted); font-size: 13px; }
+
+    .btn-checkout {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--gold), #b8860b);
+      border: none; border-radius: var(--radius-sm);
+      color: #0a0a0f; font-family: 'Syne', sans-serif;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(212,168,67,0.25);
+      letter-spacing: 0.3px;
+    }
+    .btn-checkout:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(212,168,67,0.4); }
+    .btn-checkout:active { transform: translateY(0); }
+    .btn-checkout:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-clear { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--muted2); font-size: 12px; padding: 6px 12px; cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+    .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Stats cards ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+    .stat-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; }
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.green { color: var(--green); }
+
+    /* ── Table ── */
+    .data-table { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table-head { display: grid; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .table-head span { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; }
+    .table-row { display: grid; padding: 14px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.15s; }
+    .table-row:last-child { border-bottom: none; }
+    .table-row:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 20px; padding: 28px; max-width: 420px; width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      animation: modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes modalIn { from { opacity:0; transform:scale(0.9) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+    .form-input, .form-select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--gold); }
+    .form-select option { background: var(--surface); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), #b8860b);
+      border: none; border-radius: var(--radius-sm); padding: 11px 20px;
+      color: #0a0a0f; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: all 0.2s; flex: 1;
+    }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 11px 20px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--border2); background: rgba(255,255,255,0.05); }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+    /* ── Ticket ── */
+    .ticket { text-align: center; }
+    .ticket-icon { font-size: 48px; margin-bottom: 12px; }
+    .ticket-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .ticket-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .ticket-items { text-align: left; background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px; }
+    .ticket-item { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: var(--muted2); }
+    .ticket-item span:last-child { font-family: 'DM Mono', monospace; }
+    .ticket-totals { text-align: left; padding: 0 4px; }
+    .ticket-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; font-family: 'DM Mono', monospace; }
+    .ticket-row.total { font-size: 16px; font-weight: 600; color: var(--gold); border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
+    .ticket-row.cambio-row { color: var(--green); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 200;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 12px 18px;
+      font-size: 13px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast.ok { border-left: 3px solid var(--green); }
+    .toast.err { border-left: 3px solid var(--red); }
+    @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    /* ── Loading ── */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: var(--muted); gap: 10px; font-size: 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 18px; height: 18px; border: 2px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    /* ── Quick amounts ── */
+    .quick-amts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+    .quick-btn {
+      padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted2); font-family: 'DM Mono', monospace;
+      font-size: 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .quick-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(212,168,67,0.05); }
+
+    /* ── Scrollbar ── */
+    .panel::-webkit-scrollbar-track { background: transparent; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .cart-panel { width: 300px; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
-
-const API = "/api";
-
-// Iconos desde lucide
-const icons = {
-  ShoppingCart: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
-  Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
-  Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>,
-  Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  Minus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  X: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Edit: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-  Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-  BarChart3: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
-  Home: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  Package: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
-  ArrowLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
-};
-
+const { useState, useEffect, useCallback } = React;
+const API = '/api';
 const fmt = n => `$${parseFloat(n||0).toFixed(2)}`;
 
-function PuntoDeVenta() {
+const EMOJIS = { 'Lácteos':'🥛','Abarrotes':'🛒','Bebidas':'🥤','Panadería':'🍞','Embutidos':'🥩','Limpieza':'🧹','Carnes':'🥩','Frutas y Verduras':'🥦','General':'📦' };
+const getEmoji = cat => EMOJIS[cat] || '📦';
+
+const CATS_DEFAULT = ['Lácteos','Abarrotes','Bebidas','Panadería','Embutidos','Limpieza','Carnes','Frutas y Verduras','General'];
+
+// SVG Icons
+const Icon = ({ d, size=18, stroke=2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d}/>
+  </svg>
+);
+
+const Icons = {
+  cart: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
+  search: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+  box: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+  chart: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
+  back: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+  plus: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  minus: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  trash: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>,
+  edit: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  x: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
+
+function App() {
+  const [vista, setVista] = useState('venta');
   const [productos, setProductos] = useState([]);
+  const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [carrito, setCarrito] = useState([]);
   const [busqueda, setBusqueda] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState('Todos');
-  const [ventasHoy, setVentasHoy] = useState([]);
-  const [mostrarTicket, setMostrarTicket] = useState(false);
-  const [ultimaVenta, setUltimaVenta] = useState(null);
-  const [mostrarProductos, setMostrarProductos] = useState(false);
+  const [catFiltro, setCatFiltro] = useState('Todos');
   const [montoRecibido, setMontoRecibido] = useState('');
-  const [mostrarAdmin, setMostrarAdmin] = useState(false);
-  const [productoEditando, setProductoEditando] = useState(null);
-  const [formProducto, setFormProducto] = useState({ nombre:'', precio:'', categoria:'General', stock:'', codigo:'' });
-  const [vistaActual, setVistaActual] = useState('venta');
-  const [guardando, setGuardando] = useState(false);
+  const [ticket, setTicket] = useState(null);
+  const [adminModal, setAdminModal] = useState(false);
+  const [editProd, setEditProd] = useState(null);
+  const [form, setForm] = useState({ nombre:'', precio:'', stock:'', categoria:'General', codigo:'' });
   const [toast, setToast] = useState(null);
+  const [procesando, setProcesando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const showToast = (msg, tipo='ok') => {
     setToast({ msg, tipo });
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 2800);
   };
 
   const fetchProductos = async () => {
     try {
       const r = await fetch(`${API}/productos`);
-      const data = await r.json();
-      setProductos(data.reverse());
-    } catch(e) { showToast('Error cargando productos', 'err'); }
+      const d = await r.json();
+      setProductos(Array.isArray(d) ? d : []);
+    } catch { showToast('Error cargando productos', 'err'); }
     finally { setLoading(false); }
   };
 
   const fetchVentas = async () => {
     try {
       const r = await fetch(`${API}/ventas`);
-      const data = await r.json();
-      setVentasHoy(data);
-    } catch(e) {}
+      const d = await r.json();
+      setVentas(Array.isArray(d) ? d : []);
+    } catch {}
   };
 
-  useEffect(() => {
-    fetchProductos();
-    fetchVentas();
-  }, []);
+  useEffect(() => { fetchProductos(); fetchVentas(); }, []);
 
   const categorias = ['Todos', ...new Set(productos.map(p => p.categoria || 'General'))];
 
   const productosFiltrados = productos.filter(p => {
     const q = busqueda.toLowerCase();
-    const matchQ = p.nombre.toLowerCase().includes(q) || (p.codigo||'').toLowerCase().includes(q);
-    const matchC = categoriaFiltro === 'Todos' || (p.categoria||'General') === categoriaFiltro;
-    return matchQ && matchC;
+    const m = p.nombre.toLowerCase().includes(q) || (p.codigo||'').toLowerCase().includes(q);
+    const c = catFiltro === 'Todos' || (p.categoria||'General') === catFiltro;
+    return m && c;
   });
 
-  const agregarAlCarrito = (producto) => {
-    const existente = carrito.find(i => i.id === producto.id);
-    if (existente) {
-      if (existente.cantidad < producto.stock) {
-        setCarrito(carrito.map(i => i.id === producto.id ? {...i, cantidad: i.cantidad+1} : i));
+  const addToCart = (prod) => {
+    if (prod.stock <= 0) return;
+    setCarrito(prev => {
+      const ex = prev.find(i => i.id === prod.id);
+      if (ex) {
+        if (ex.cantidad >= prod.stock) return prev;
+        return prev.map(i => i.id === prod.id ? { ...i, cantidad: i.cantidad + 1 } : i);
       }
-    } else {
-      setCarrito([...carrito, {...producto, cantidad:1}]);
-    }
+      return [...prev, { ...prod, cantidad: 1 }];
+    });
   };
 
-  const modificarCantidad = (id, cambio) => {
-    const item = carrito.find(i => i.id === id);
-    const nueva = item.cantidad + cambio;
-    if (nueva === 0) setCarrito(carrito.filter(i => i.id !== id));
-    else if (nueva <= item.stock) setCarrito(carrito.map(i => i.id === id ? {...i, cantidad:nueva} : i));
+  const modQty = (id, delta) => {
+    setCarrito(prev => {
+      const item = prev.find(i => i.id === id);
+      const nueva = item.cantidad + delta;
+      if (nueva <= 0) return prev.filter(i => i.id !== id);
+      if (nueva > item.stock) return prev;
+      return prev.map(i => i.id === id ? { ...i, cantidad: nueva } : i);
+    });
   };
 
-  const subtotal = () => carrito.reduce((t, i) => t + i.precio * i.cantidad, 0);
-  const iva = () => subtotal() * 0.16;
-  const total = () => subtotal() + iva();
-  const cambio = () => (parseFloat(montoRecibido)||0) - total();
+  const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  const iva = subtotal * 0.16;
+  const total = subtotal + iva;
+  const cambio = (parseFloat(montoRecibido) || 0) - total;
 
-  const finalizarVenta = async () => {
+  const quickAmounts = [50, 100, 200, 500, 1000].filter(a => a >= total - 0.01).slice(0, 6);
+
+  const checkout = async () => {
     if (!carrito.length) return;
     const recibido = parseFloat(montoRecibido) || 0;
-    if (recibido < total()) { showToast('Monto insuficiente', 'err'); return; }
-    setGuardando(true);
+    if (!montoRecibido) { showToast('Ingresa el monto recibido', 'err'); return; }
+    if (recibido < total) { showToast('Monto insuficiente', 'err'); return; }
+    setProcesando(true);
     try {
       const r = await fetch(`${API}/ventas`, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subtotal: subtotal(), iva: iva(), total: total(),
-          monto_recibido: recibido, cambio: recibido - total(),
-          items: carrito.map(i => ({ id:i.id, nombre:i.nombre, precio:i.precio, cantidad:i.cantidad }))
+          subtotal, iva, total, monto_recibido: recibido, cambio: recibido - total,
+          items: carrito.map(i => ({ id: i.id, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad }))
         })
       });
-      const venta = await r.json();
-      setUltimaVenta({ ...venta, items: carrito, subtotal:subtotal(), iva:iva(), total:total(), montoRecibido:recibido, cambio:recibido-total() });
-      setMostrarTicket(true);
+      if (!r.ok) throw new Error();
+      setTicket({ items: [...carrito], subtotal, iva, total, montoRecibido: recibido, cambio: recibido - total });
       setCarrito([]);
       setMontoRecibido('');
       await fetchProductos();
       await fetchVentas();
-      showToast('Venta registrada ✓');
-    } catch(e) { showToast('Error al registrar venta', 'err'); }
-    finally { setGuardando(false); }
+      showToast('Venta registrada exitosamente');
+    } catch { showToast('Error al procesar la venta', 'err'); }
+    finally { setProcesando(false); }
   };
 
-  const guardarProducto = async () => {
-    if (!formProducto.nombre || !formProducto.precio || !formProducto.stock) {
-      showToast('Completa nombre, precio y stock', 'err'); return;
-    }
+  const openAdmin = (prod = null) => {
+    setEditProd(prod);
+    setForm(prod ? { nombre: prod.nombre, precio: prod.precio, stock: prod.stock, categoria: prod.categoria || 'General', codigo: prod.codigo || '' }
+                 : { nombre:'', precio:'', stock:'', categoria:'General', codigo:'' });
+    setAdminModal(true);
+  };
+
+  const saveProduct = async () => {
+    if (!form.nombre || !form.precio || form.stock === '') { showToast('Completa los campos requeridos', 'err'); return; }
     setGuardando(true);
-    const body = {
-      nombre: formProducto.nombre,
-      precio: parseFloat(formProducto.precio),
-      stock: parseInt(formProducto.stock),
-      categoria: formProducto.categoria,
-      codigo: formProducto.codigo,
-      unidad_medida_id: null
-    };
+    const body = { nombre: form.nombre, precio: parseFloat(form.precio), stock: parseInt(form.stock), categoria: form.categoria, codigo: form.codigo, unidad_medida_id: null };
     try {
-      if (productoEditando) {
-        await fetch(`${API}/productos/${productoEditando.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        showToast('Producto actualizado ✓');
+      if (editProd) {
+        await fetch(`${API}/productos/${editProd.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        showToast('Producto actualizado');
       } else {
-        await fetch(`${API}/productos`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        showToast('Producto creado ✓');
+        await fetch(`${API}/productos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        showToast('Producto creado');
       }
+      setAdminModal(false);
       await fetchProductos();
-      setProductoEditando(null);
-      setFormProducto({ nombre:'', precio:'', categoria:'General', stock:'', codigo:'' });
-    } catch(e) { showToast('Error al guardar', 'err'); }
+    } catch { showToast('Error al guardar', 'err'); }
     finally { setGuardando(false); }
   };
 
-  const eliminarProducto = async (id) => {
-    if (!window.confirm('¿Eliminar este producto?')) return;
-    await fetch(`${API}/productos/${id}`, { method:'DELETE' });
-    await fetchProductos();
-    showToast('Eliminado');
-  };
-
-  const ajustarStock = async (id, cantidad) => {
-    const prod = productos.find(p => p.id === id);
-    const nuevoStock = Math.max(0, (prod.stock||0) + cantidad);
-    await fetch(`${API}/productos/${id}/stock`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stock: nuevoStock })
-    });
+  const deleteProd = async (id) => {
+    if (!confirm('¿Eliminar este producto?')) return;
+    await fetch(`${API}/productos/${id}`, { method: 'DELETE' });
+    showToast('Producto eliminado');
     await fetchProductos();
   };
 
-  const productosStockBajo = productos.filter(p => (p.stock||0) < 10);
-  const reporte = { totalVentas: ventasHoy.reduce((s,v)=>s+parseFloat(v.total||0),0), numeroVentas: ventasHoy.length };
+  const adjustStock = async (id, delta) => {
+    const p = productos.find(x => x.id === id);
+    const ns = Math.max(0, (p.stock || 0) + delta);
+    await fetch(`${API}/productos/${id}/stock`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stock: ns }) });
+    await fetchProductos();
+  };
+
+  const stockBajo = productos.filter(p => (p.stock || 0) < 10);
+  const totalVentas = ventas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+  const today = ventas.filter(v => new Date(v.created_at).toDateString() === new Date().toDateString());
 
   return (
-    <div className="min-h-screen bg-white relative">
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl text-white text-sm shadow-lg ${toast.tipo==='err' ? 'bg-red-500' : 'bg-green-600'}`}>
-          {toast.msg}
-        </div>
-      )}
-
+    <div style={{ display:'flex', height:'100vh' }}>
       {/* Sidebar */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full z-30">
-        <div className="group flex flex-col w-16 hover:w-56 transition-all duration-300 ease-in-out bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 border-r border-gray-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-800 flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">PV</span>
-            </div>
-            <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-300 text-white font-semibold text-sm">La Gran Empresa</span>
-          </div>
-          <nav className="p-3 space-y-2 flex-1">
-            {[
-              { id:'venta', label:'Punto de Venta', Icon: icons.Home },
-              { id:'inventario', label:'Inventario', Icon: icons.Package },
-              { id:'reportes', label:'Reportes', Icon: icons.BarChart3 },
-            ].map(({ id, label, Icon }) => (
-              <button key={id} onClick={() => setVistaActual(id)}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${vistaActual===id ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-                <Icon />
-                <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-300 text-sm font-medium">{label}</span>
-                {id==='inventario' && productosStockBajo.length > 0 && <span className="ml-auto opacity-0 group-hover:opacity-100 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{productosStockBajo.length}</span>}
-              </button>
-            ))}
-            <div className="pt-2 border-t border-gray-800">
-              <a href="/" className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-all">
-                <icons.ArrowLeft />
-                <span className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-300 text-sm">← Almacén</span>
-              </a>
-            </div>
-          </nav>
-          <div className="p-4 border-t border-gray-800 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            <div className="bg-white/5 rounded-xl p-3 text-xs text-gray-400 space-y-1">
-              <div className="flex justify-between"><span>Ventas hoy</span><span className="text-white font-bold">{ventasHoy.length}</span></div>
-              <div className="flex justify-between"><span>Total</span><span className="text-green-400 font-bold">{fmt(reporte.totalVentas)}</span></div>
-            </div>
-          </div>
-        </div>
+      <div className="sidebar">
+        <div className="logo-mark">GE</div>
+        {[
+          { id: 'venta', Icon: Icons.cart, label: 'Venta' },
+          { id: 'inventario', Icon: Icons.box, label: 'Inventario', badge: stockBajo.length > 0 },
+          { id: 'reportes', Icon: Icons.chart, label: 'Reportes' },
+        ].map(({ id, Icon, badge }) => (
+          <button key={id} className={`nav-btn${vista===id?' active':''}`} onClick={() => setVista(id)} title={id.charAt(0).toUpperCase()+id.slice(1)}>
+            <Icon />
+            {badge && <div className="badge" />}
+          </button>
+        ))}
+        <div className="nav-divider" />
+        <a href="/" className="nav-btn back-btn" title="Volver al Almacén"><Icons.back /></a>
       </div>
 
       {/* Main */}
-      <div className="md:pl-16 px-4 pt-6 pb-24 md:pb-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 pb-4 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white">
-              {vistaActual==='venta' && <icons.ShoppingCart />}
-              {vistaActual==='inventario' && <icons.Package />}
-              {vistaActual==='reportes' && <icons.BarChart3 />}
-            </div>
-            <div>
-              <h1 className="text-xl font-light text-gray-900">
-                {vistaActual==='venta' && 'Punto de Venta'}
-                {vistaActual==='inventario' && 'Inventario'}
-                {vistaActual==='reportes' && 'Reportes'}
-              </h1>
-              <p className="text-xs text-gray-400">La Gran Empresa</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Ventas hoy</p>
-              <p className="text-2xl font-light">{ventasHoy.length}</p>
-            </div>
-            <button onClick={() => setMostrarAdmin(true)} className="px-4 py-2 bg-gray-900 text-white text-sm rounded-xl hover:bg-gray-800 transition-all">Admin</button>
-          </div>
-        </div>
+      <div className="main">
 
-        {/* ── VISTA VENTA ── */}
-        {vistaActual==='venta' && (
-          <div className={`grid grid-cols-1 ${mostrarProductos ? 'lg:grid-cols-3' : ''} gap-6`}>
-            {mostrarProductos && (
-              <div className="lg:col-span-2 space-y-4">
-                <div className="bg-white border border-gray-200 rounded-2xl p-4">
-                  <div className="flex gap-3 mb-4">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><icons.Search /></span>
-                      <input type="text" placeholder="Buscar producto o código..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-black text-sm" />
-                    </div>
-                    <button onClick={() => { setMostrarProductos(false); setBusqueda(''); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-gray-300 hover:bg-gray-100">
-                      <icons.X />
+        {/* ── VENTA ── */}
+        {vista === 'venta' && (
+          <>
+            <div className="panel">
+              <div className="page-header">
+                <div>
+                  <div className="page-title">Punto de Venta</div>
+                  <div className="page-sub">La Gran Empresa · {new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' })}</div>
+                </div>
+                <button className="btn-secondary" style={{ fontSize:13, padding:'8px 16px' }} onClick={() => openAdmin()}>+ Nuevo Producto</button>
+              </div>
+
+              {/* Search */}
+              <div className="search-wrap">
+                <span className="search-icon"><Icons.search /></span>
+                <input className="search-input" placeholder="Buscar por nombre o código..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              </div>
+
+              {/* Categories */}
+              <div className="cats">
+                {categorias.map(c => (
+                  <button key={c} className={`cat-btn${catFiltro===c?' active':''}`} onClick={() => setCatFiltro(c)}>{c}</button>
+                ))}
+              </div>
+
+              {/* Products */}
+              {loading ? (
+                <div className="loading"><div className="spinner" /> Cargando productos...</div>
+              ) : (
+                <div className="products-grid">
+                  {productosFiltrados.map(p => (
+                    <button key={p.id} className={`product-card${p.stock<=0?' out-of-stock':''}`} onClick={() => addToCart(p)}>
+                      <span className="prod-emoji">{getEmoji(p.categoria)}</span>
+                      <div className="prod-cat-badge">{p.categoria || 'General'}</div>
+                      <div className="prod-name">{p.nombre}</div>
+                      <div className="prod-price">{fmt(p.precio)}</div>
+                      <div className={`prod-stock${(p.stock||0)<10?' low':''}`}>{p.stock<=0 ? 'Sin stock' : `${p.stock} uds`}</div>
                     </button>
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {categorias.map(cat => (
-                      <button key={cat} onClick={() => setCategoriaFiltro(cat)}
-                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${categoriaFiltro===cat ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {loading ? (
-                  <div className="text-center py-12 text-gray-400">Cargando productos...</div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {productosFiltrados.map(producto => (
-                      <button key={producto.id} onClick={() => agregarAlCarrito(producto)}
-                        disabled={producto.stock <= 0}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all active:scale-95 ${producto.stock<=0 ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed' : 'border-gray-200 bg-white hover:border-gray-400 hover:shadow-md'}`}>
-                        <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center mb-3 text-lg">
-                          {(producto.categoria||'G')[0]}
-                        </div>
-                        <p className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">{producto.nombre}</p>
-                        <p className="text-lg font-bold text-gray-900">{fmt(producto.precio)}</p>
-                        <p className={`text-xs mt-1 ${producto.stock<10 ? 'text-red-500' : 'text-gray-400'}`}>Stock: {producto.stock}</p>
-                      </button>
-                    ))}
-                    {productosFiltrados.length===0 && <p className="col-span-4 text-center py-8 text-gray-400">Sin resultados</p>}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Carrito */}
-            <div className={`${mostrarProductos ? '' : 'max-w-lg mx-auto w-full'} space-y-4`}>
-              {!mostrarProductos && (
-                <button onClick={() => setMostrarProductos(true)}
-                  className="w-full py-4 bg-black text-white rounded-2xl font-medium hover:bg-gray-800 transition-all flex items-center justify-center gap-2">
-                  <icons.Search /> Buscar Producto
-                </button>
-              )}
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-medium text-gray-900 flex items-center gap-2"><icons.ShoppingCart /> Carrito ({carrito.length})</h2>
-                  {carrito.length>0 && <button onClick={() => setCarrito([])} className="text-xs text-red-500 hover:text-red-700">Limpiar</button>}
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {carrito.length===0 ? (
-                    <p className="text-center py-8 text-gray-400 text-sm">Agrega productos al carrito</p>
-                  ) : carrito.map(item => (
-                    <div key={item.id} className="p-3 border-b border-gray-50 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.nombre}</p>
-                        <p className="text-xs text-gray-500">{fmt(item.precio)} c/u</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => modificarCantidad(item.id,-1)} className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"><icons.Minus /></button>
-                        <span className="w-6 text-center text-sm font-medium">{item.cantidad}</span>
-                        <button onClick={() => modificarCantidad(item.id,1)} className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"><icons.Plus /></button>
-                        <button onClick={() => setCarrito(carrito.filter(i=>i.id!==item.id))} className="w-7 h-7 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-100"><icons.Trash2 /></button>
-                      </div>
-                      <span className="text-sm font-bold w-16 text-right">{fmt(item.precio*item.cantidad)}</span>
-                    </div>
                   ))}
+                  {productosFiltrados.length === 0 && !loading && (
+                    <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 20px', color:'var(--muted)' }}>
+                      <div style={{ fontSize:36, marginBottom:8 }}>🔍</div>
+                      <div style={{ fontSize:14 }}>Sin resultados para "{busqueda}"</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Cart */}
+            <div className="cart-panel">
+              <div className="cart-header">
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div>
+                    <div className="cart-title">Carrito</div>
+                    <div className="cart-count">{carrito.length} {carrito.length===1?'producto':'productos'}</div>
+                  </div>
+                  {carrito.length > 0 && <button className="btn-clear" onClick={() => setCarrito([])}>Limpiar</button>}
                 </div>
               </div>
 
-              {carrito.length>0 && (
-                <div className="bg-gray-950 text-white rounded-2xl p-5 space-y-3">
-                  <div className="flex justify-between text-sm text-gray-400"><span>Subtotal</span><span>{fmt(subtotal())}</span></div>
-                  <div className="flex justify-between text-sm text-gray-400"><span>IVA (16%)</span><span>{fmt(iva())}</span></div>
-                  <div className="flex justify-between text-lg font-bold border-t border-gray-800 pt-3"><span>Total</span><span>{fmt(total())}</span></div>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input type="number" placeholder="Monto recibido" value={montoRecibido}
-                      onChange={e => setMontoRecibido(e.target.value)}
-                      className="w-full pl-8 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-white/30 text-sm" />
+              <div className="cart-items">
+                {carrito.length === 0 ? (
+                  <div className="cart-empty">
+                    <span>🛒</span>
+                    <p>Selecciona productos</p>
                   </div>
-                  {montoRecibido && parseFloat(montoRecibido) >= total() && (
-                    <div className="flex justify-between text-green-400 text-sm"><span>Cambio</span><span>{fmt(cambio())}</span></div>
+                ) : carrito.map(item => (
+                  <div key={item.id} className="cart-item">
+                    <div className="cart-item-info">
+                      <div className="cart-item-name">{item.nombre}</div>
+                      <div className="cart-item-price">{fmt(item.precio)} × {item.cantidad}</div>
+                    </div>
+                    <div className="qty-ctrl">
+                      <button className="qty-btn del" onClick={() => modQty(item.id, -1)}>{item.cantidad === 1 ? <Icons.trash /> : <Icons.minus />}</button>
+                      <span className="qty-num">{item.cantidad}</span>
+                      <button className="qty-btn" onClick={() => modQty(item.id, 1)}><Icons.plus /></button>
+                    </div>
+                    <div className="cart-item-total">{fmt(item.precio * item.cantidad)}</div>
+                  </div>
+                ))}
+              </div>
+
+              {carrito.length > 0 && (
+                <div className="cart-footer">
+                  <div className="total-row"><span>Subtotal</span><span className="val">{fmt(subtotal)}</span></div>
+                  <div className="total-row"><span>IVA 16%</span><span className="val">{fmt(iva)}</span></div>
+                  <div className="total-row grand"><span>Total</span><span className="val">{fmt(total)}</span></div>
+
+                  {quickAmounts.length > 0 && (
+                    <div className="quick-amts">
+                      {quickAmounts.map(a => (
+                        <button key={a} className="quick-btn" onClick={() => setMontoRecibido(String(a))}>${a}</button>
+                      ))}
+                    </div>
                   )}
-                  <button onClick={finalizarVenta} disabled={guardando}
-                    className="w-full py-4 bg-white text-gray-900 font-bold rounded-xl hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50">
-                    {guardando ? 'Procesando...' : 'Finalizar Venta'}
+
+                  <input className="monto-input" type="number" placeholder="Monto recibido ($)" value={montoRecibido} onChange={e => setMontoRecibido(e.target.value)} />
+                  {montoRecibido && parseFloat(montoRecibido) >= total && (
+                    <div className="total-row cambio"><span>Cambio</span><span>{fmt(cambio)}</span></div>
+                  )}
+                  <button className="btn-checkout" onClick={checkout} disabled={procesando || !montoRecibido}>
+                    {procesando ? '⏳ Procesando...' : '✓ Finalizar Venta'}
                   </button>
                 </div>
               )}
             </div>
-          </div>
+          </>
         )}
 
-        {/* ── VISTA INVENTARIO ── */}
-        {vistaActual==='inventario' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-gray-50 rounded-2xl p-4"><p className="text-xs text-gray-400">Total Productos</p><p className="text-2xl font-light">{productos.length}</p></div>
-              <div className="bg-red-50 rounded-2xl p-4"><p className="text-xs text-red-400">Stock Bajo</p><p className="text-2xl font-light text-red-600">{productosStockBajo.length}</p></div>
-              <div className="bg-gray-50 rounded-2xl p-4"><p className="text-xs text-gray-400">Categorías</p><p className="text-2xl font-light">{categorias.length-1}</p></div>
-              <div className="bg-gray-50 rounded-2xl p-4"><p className="text-xs text-gray-400">Total Stock</p><p className="text-2xl font-light">{productos.reduce((s,p)=>s+(p.stock||0),0)}</p></div>
+        {/* ── INVENTARIO ── */}
+        {vista === 'inventario' && (
+          <div className="panel">
+            <div className="page-header">
+              <div>
+                <div className="page-title">Inventario</div>
+                <div className="page-sub">{productos.length} productos registrados</div>
+              </div>
+              <button className="btn-primary" style={{ padding:'10px 20px', borderRadius:'var(--radius-sm)' }} onClick={() => openAdmin()}>+ Agregar</button>
             </div>
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-gray-100"><h3 className="font-medium">Productos ({productos.length})</h3></div>
-              <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
-                {productos.map(p => (
-                  <div key={p.id} className="p-4 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900">{p.nombre}</p>
-                      <p className="text-xs text-gray-400">{p.categoria} {p.codigo ? `· ${p.codigo}` : ''} · {fmt(p.precio)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => ajustarStock(p.id,-10)} className="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs hover:bg-red-200">-10</button>
-                      <button onClick={() => ajustarStock(p.id,10)} className="px-2 py-1 bg-green-100 text-green-600 rounded-lg text-xs hover:bg-green-200">+10</button>
-                      <span className={`w-16 text-right text-sm font-medium ${(p.stock||0)<10 ? 'text-red-600' : 'text-gray-700'}`}>{p.stock} uds</span>
-                      <button onClick={() => { setProductoEditando(p); setFormProducto({ nombre:p.nombre, precio:p.precio, categoria:p.categoria||'General', stock:p.stock, codigo:p.codigo||'' }); setMostrarAdmin(true); }}
-                        className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100"><icons.Edit /></button>
-                      <button onClick={() => eliminarProducto(p.id)} className="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-100"><icons.Trash2 /></button>
-                    </div>
+
+            <div className="stats-row">
+              <div className="stat-card"><div className="stat-label">Total</div><div className="stat-value">{productos.length}</div></div>
+              <div className="stat-card"><div className="stat-label">Stock Bajo</div><div className="stat-value red">{stockBajo.length}</div></div>
+              <div className="stat-card"><div className="stat-label">Categorías</div><div className="stat-value gold">{categorias.length - 1}</div></div>
+              <div className="stat-card"><div className="stat-label">Total Unidades</div><div className="stat-value green">{productos.reduce((s,p) => s+(p.stock||0), 0)}</div></div>
+            </div>
+
+            <div className="data-table">
+              <div className="table-head" style={{ gridTemplateColumns:'2fr 1fr 1fr 100px 120px' }}>
+                <span>Producto</span><span>Categoría</span><span>Precio</span><span>Stock</span><span>Acciones</span>
+              </div>
+              {productos.length === 0 ? (
+                <div className="loading">Sin productos. Agrega uno.</div>
+              ) : productos.map(p => (
+                <div key={p.id} className="table-row" style={{ gridTemplateColumns:'2fr 1fr 1fr 100px 120px' }}>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:500 }}>{p.nombre}</div>
+                    {p.codigo && <div style={{ fontSize:11, color:'var(--muted)', fontFamily:'DM Mono' }}>{p.codigo}</div>}
                   </div>
-                ))}
-              </div>
+                  <div style={{ fontSize:13, color:'var(--muted2)' }}>{p.categoria || 'General'}</div>
+                  <div style={{ fontFamily:'DM Mono', fontSize:13, color:'var(--gold)' }}>{fmt(p.precio)}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <button className="qty-btn" style={{ width:22, height:22, fontSize:11 }} onClick={() => adjustStock(p.id, -10)}>-10</button>
+                    <span style={{ fontFamily:'DM Mono', fontSize:13, width:28, textAlign:'center', color:(p.stock||0)<10?'var(--red)':'var(--text)' }}>{p.stock}</span>
+                    <button className="qty-btn" style={{ width:22, height:22, fontSize:11 }} onClick={() => adjustStock(p.id, 10)}>+10</button>
+                  </div>
+                  <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                    <button className="qty-btn" onClick={() => openAdmin(p)}><Icons.edit /></button>
+                    <button className="qty-btn del" onClick={() => deleteProd(p.id)}><Icons.trash /></button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── VISTA REPORTES ── */}
-        {vistaActual==='reportes' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-2xl p-5"><p className="text-xs text-gray-400 mb-1">Ventas Hoy</p><p className="text-3xl font-light">{reporte.numeroVentas}</p></div>
-              <div className="bg-green-50 rounded-2xl p-5"><p className="text-xs text-green-500 mb-1">Total Recaudado</p><p className="text-3xl font-light text-green-700">{fmt(reporte.totalVentas)}</p></div>
-              <div className="bg-gray-50 rounded-2xl p-5"><p className="text-xs text-gray-400 mb-1">Ticket Promedio</p><p className="text-3xl font-light">{fmt(reporte.numeroVentas>0 ? reporte.totalVentas/reporte.numeroVentas : 0)}</p></div>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-gray-100"><h3 className="font-medium">Historial de Ventas</h3></div>
-              <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
-                {ventasHoy.length===0 ? <p className="text-center py-8 text-gray-400">Sin ventas registradas</p> :
-                  ventasHoy.map(v => (
-                    <div key={v.id} className="p-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Venta #{v.id}</p>
-                        <p className="text-xs text-gray-400">{new Date(v.created_at).toLocaleString('es-MX')}</p>
-                      </div>
-                      <span className="font-bold text-gray-900">{fmt(v.total)}</span>
-                    </div>
-                  ))
-                }
+        {/* ── REPORTES ── */}
+        {vista === 'reportes' && (
+          <div className="panel">
+            <div className="page-header">
+              <div>
+                <div className="page-title">Reportes</div>
+                <div className="page-sub">Historial de ventas</div>
               </div>
+            </div>
+
+            <div className="stats-row">
+              <div className="stat-card"><div className="stat-label">Ventas Hoy</div><div className="stat-value gold">{today.length}</div></div>
+              <div className="stat-card"><div className="stat-label">Total Hoy</div><div className="stat-value green">{fmt(today.reduce((s,v)=>s+parseFloat(v.total||0),0))}</div></div>
+              <div className="stat-card"><div className="stat-label">Total Historial</div><div className="stat-value">{ventas.length}</div></div>
+              <div className="stat-card"><div className="stat-label">Recaudado Total</div><div className="stat-value gold">{fmt(totalVentas)}</div></div>
+            </div>
+
+            <div className="data-table">
+              <div className="table-head" style={{ gridTemplateColumns:'60px 2fr 1fr 1fr 1fr' }}>
+                <span>#</span><span>Fecha</span><span>Subtotal</span><span>IVA</span><span>Total</span>
+              </div>
+              {ventas.length === 0 ? (
+                <div className="loading">Sin ventas registradas aún.</div>
+              ) : ventas.map(v => (
+                <div key={v.id} className="table-row" style={{ gridTemplateColumns:'60px 2fr 1fr 1fr 1fr' }}>
+                  <div style={{ fontFamily:'DM Mono', fontSize:12, color:'var(--muted)' }}>#{v.id}</div>
+                  <div style={{ fontSize:13 }}>{new Date(v.created_at).toLocaleString('es-MX')}</div>
+                  <div style={{ fontFamily:'DM Mono', fontSize:13, color:'var(--muted2)' }}>{fmt(v.subtotal)}</div>
+                  <div style={{ fontFamily:'DM Mono', fontSize:13, color:'var(--muted2)' }}>{fmt(v.iva)}</div>
+                  <div style={{ fontFamily:'DM Mono', fontSize:14, fontWeight:600, color:'var(--gold)' }}>{fmt(v.total)}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal Ticket */}
-      {mostrarTicket && ultimaVenta && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-3xl">✓</span>
-              </div>
-              <h2 className="text-xl font-medium">Venta Completada</h2>
-            </div>
-            <div className="space-y-2 text-sm mb-6">
-              {ultimaVenta.items.map(i => (
-                <div key={i.id} className="flex justify-between text-gray-600">
-                  <span>{i.nombre} x{i.cantidad}</span><span>{fmt(i.precio*i.cantidad)}</span>
+      {/* ── TICKET MODAL ── */}
+      {ticket && (
+        <div className="modal-overlay">
+          <div className="modal ticket">
+            <div className="ticket-icon">✅</div>
+            <div className="ticket-title">¡Venta Completada!</div>
+            <div className="ticket-sub">{new Date().toLocaleString('es-MX')}</div>
+            <div className="ticket-items">
+              {ticket.items.map(i => (
+                <div key={i.id} className="ticket-item">
+                  <span>{i.nombre} ×{i.cantidad}</span>
+                  <span>{fmt(i.precio * i.cantidad)}</span>
                 </div>
               ))}
-              <div className="border-t pt-2 space-y-1">
-                <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{fmt(ultimaVenta.subtotal)}</span></div>
-                <div className="flex justify-between text-gray-500"><span>IVA</span><span>{fmt(ultimaVenta.iva)}</span></div>
-                <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{fmt(ultimaVenta.total)}</span></div>
-                <div className="flex justify-between text-green-600"><span>Cambio</span><span>{fmt(ultimaVenta.cambio)}</span></div>
-              </div>
             </div>
-            <button onClick={() => setMostrarTicket(false)} className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-all">
-              Nueva Venta
-            </button>
+            <div className="ticket-totals">
+              <div className="ticket-row"><span>Subtotal</span><span>{fmt(ticket.subtotal)}</span></div>
+              <div className="ticket-row"><span>IVA 16%</span><span>{fmt(ticket.iva)}</span></div>
+              <div className="ticket-row total"><span>Total</span><span>{fmt(ticket.total)}</span></div>
+              <div className="ticket-row" style={{ padding:'6px 0', color:'var(--muted2)' }}><span>Recibido</span><span>{fmt(ticket.montoRecibido)}</span></div>
+              <div className="ticket-row cambio-row"><span>Cambio</span><span>{fmt(ticket.cambio)}</span></div>
+            </div>
+            <div className="modal-actions" style={{ marginTop:20 }}>
+              <button className="btn-primary" style={{ flex:1 }} onClick={() => setTicket(null)}>Nueva Venta</button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal Admin */}
-      {mostrarAdmin && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-medium">{productoEditando ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-              <button onClick={() => { setMostrarAdmin(false); setProductoEditando(null); setFormProducto({ nombre:'', precio:'', categoria:'General', stock:'', codigo:'' }); }} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"><icons.X /></button>
+      {/* ── ADMIN MODAL ── */}
+      {adminModal && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setAdminModal(false)}>
+          <div className="modal">
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+              <div className="modal-title">{editProd ? 'Editar Producto' : 'Nuevo Producto'}</div>
+              <button className="nav-btn" style={{ width:30, height:30 }} onClick={() => setAdminModal(false)}><Icons.x /></button>
             </div>
-            <div className="space-y-4">
-              {[
-                { label:'Nombre *', key:'nombre', type:'text', placeholder:'Nombre del producto' },
-                { label:'Código', key:'codigo', type:'text', placeholder:'Ej: ABA001' },
-                { label:'Precio *', key:'precio', type:'number', placeholder:'0.00' },
-                { label:'Stock *', key:'stock', type:'number', placeholder:'0' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wide">{f.label}</label>
-                  <input type={f.type} value={formProducto[f.key]} placeholder={f.placeholder}
-                    onChange={e => setFormProducto({...formProducto, [f.key]: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black text-sm" />
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wide">Categoría</label>
-                <select value={formProducto.categoria} onChange={e => setFormProducto({...formProducto, categoria: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black text-sm">
-                  {['General','Lácteos','Abarrotes','Bebidas','Panadería','Embutidos','Limpieza','Carnes','Frutas y Verduras'].map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+            <div className="modal-sub">{editProd ? 'Modifica los datos del producto' : 'Agrega un nuevo producto al inventario'}</div>
+
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={form.nombre} onChange={e => setForm({...form, nombre:e.target.value})} placeholder="Nombre del producto" />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Precio *</label>
+                <input className="form-input" type="number" step="0.01" value={form.precio} onChange={e => setForm({...form, precio:e.target.value})} placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Stock *</label>
+                <input className="form-input" type="number" value={form.stock} onChange={e => setForm({...form, stock:e.target.value})} placeholder="0" />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Código</label>
+                <input className="form-input" value={form.codigo} onChange={e => setForm({...form, codigo:e.target.value})} placeholder="Ej: ABA001" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Categoría</label>
+                <select className="form-select" value={form.categoria} onChange={e => setForm({...form, categoria:e.target.value})}>
+                  {CATS_DEFAULT.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={guardarProducto} disabled={guardando}
-                  className="flex-1 bg-black text-white py-3 rounded-xl font-medium hover:bg-gray-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  <icons.Save /> {guardando ? 'Guardando...' : (productoEditando ? 'Guardar Cambios' : 'Crear Producto')}
-                </button>
-              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setAdminModal(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveProduct} disabled={guardando}>
+                {guardando ? 'Guardando...' : (editProd ? 'Guardar Cambios' : 'Crear Producto')}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bottom nav móvil */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-800 z-40">
-        <div className="grid grid-cols-4 gap-1 p-2">
-          {[
-            { id:'venta', label:'Venta', Icon: icons.Home },
-            { id:'inventario', label:'Inventario', Icon: icons.Package },
-            { id:'reportes', label:'Reportes', Icon: icons.BarChart3 },
-          ].map(({ id, label, Icon }) => (
-            <button key={id} onClick={() => setVistaActual(id)}
-              className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-all ${vistaActual===id ? 'bg-white/10 text-white' : 'text-gray-400'}`}>
-              <Icon />
-              <span className="text-xs">{label}</span>
-            </button>
-          ))}
-          <a href="/" className="flex flex-col items-center gap-1 py-2 rounded-xl text-gray-400 hover:text-white transition-all">
-            <icons.ArrowLeft />
-            <span className="text-xs">Almacén</span>
-          </a>
+      {/* ── TOAST ── */}
+      {toast && (
+        <div className={`toast ${toast.tipo}`}>
+          <span>{toast.tipo==='ok' ? '✓' : '✗'}</span>
+          {toast.msg}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<PuntoDeVenta />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
 </html>
