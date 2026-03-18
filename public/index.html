@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Gran Empresa – Sistema de Almacén</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #1a3c5e;
+      --accent:  #e8a020;
+    }
+    body { background: #f0f4f8; font-family: 'Segoe UI', sans-serif; }
+
+    /* Navbar */
+    .navbar { background: var(--primary) !important; }
+    .navbar-brand { color: var(--accent) !important; font-weight: 700; font-size: 1.25rem; }
+    .nav-link { color: rgba(255,255,255,.85) !important; }
+    .nav-link:hover, .nav-link.active { color: var(--accent) !important; }
+    .dropdown-menu { border: none; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+    .dropdown-item:hover { background: #f0f4f8; color: var(--primary); }
+
+    /* Main */
+    #main-content { min-height: calc(100vh - 56px); padding: 2rem 1rem; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Cards */
+    .catalog-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 1.5rem; }
+    .catalog-card h4 { color: var(--primary); font-weight: 700; margin-bottom: 1.25rem; }
+
+    /* Table */
+    .table thead { background: var(--primary); color: #fff; }
+    .table tbody tr:hover { background: #f0f4f8; }
+    .badge-catalog { background: var(--accent); color: #fff; font-size: .75rem; padding: .3em .6em; border-radius: 6px; }
+
+    /* Buttons */
+    .btn-primary-custom { background: var(--primary); border: none; color: #fff; }
+    .btn-primary-custom:hover { background: #254d78; color: #fff; }
+    .btn-accent { background: var(--accent); border: none; color: #fff; }
+    .btn-accent:hover { background: #c8881a; color: #fff; }
+
+    /* Dashboard hero */
+    .hero { background: linear-gradient(135deg, var(--primary), #254d78); color: #fff; border-radius: 16px; padding: 2.5rem 2rem; margin-bottom: 2rem; }
+    .hero h2 { font-weight: 700; }
+    .stat-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 1.2rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .stat-icon { font-size: 2rem; color: var(--accent); }
+
+    /* Toast */
+    #toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ NAVBAR ═══════════════════════════ -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#" onclick="showSection('dashboard')">
+      <i class="bi bi-building me-2"></i>La Gran Empresa
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <ul class="navbar-nav ms-auto">
+
+        <!-- Catálogos -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="dropCatalogos" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-journals me-1"></i>Catálogos
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="showSection('conceptos')"><i class="bi bi-tag me-2 text-muted"></i>Conceptos</a></li>
+            <li><a class="dropdown-item" href="#" onclick="showSection('destinos')"><i class="bi bi-geo-alt me-2 text-muted"></i>Destinos</a></li>
+            <li><a class="dropdown-item" href="#" onclick="showSection('productos')"><i class="bi bi-box me-2 text-muted"></i>Productos</a></li>
+            <li><a class="dropdown-item" href="#" onclick="showSection('unidades')"><i class="bi bi-rulers me-2 text-muted"></i>Unidades de Medida</a></li>
+          </ul>
+        </li>
+
+        <!-- Documentos -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="dropDocumentos" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-file-earmark-text me-1"></i>Documentos
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="showSection('entradas')"><i class="bi bi-box-arrow-in-down me-2 text-success"></i>Entradas</a></li>
+            <li><a class="dropdown-item" href="#" onclick="showSection('salidas')"><i class="bi bi-box-arrow-up me-2 text-danger"></i>Salidas</a></li>
+          </ul>
+        </li>
+
+        <!-- Estado BD -->
+        <li class="nav-item ms-2">
+          <span class="nav-link" id="db-status"><i class="bi bi-circle-fill text-warning me-1"></i>BD</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<div id="main-content" class="container-xl">
+
+  <!-- DASHBOARD -->
+  <div id="section-dashboard" class="section active">
+    <div class="hero">
+      <h2><i class="bi bi-grid-3x3-gap me-2"></i>Panel de Control</h2>
+      <p class="mb-0 opacity-75">Sistema de gestión de almacén – La Gran Empresa</p>
+    </div>
+    <div class="row g-3" id="stats-row">
+      <div class="col-sm-6 col-lg-3">
+        <div class="stat-card"><i class="bi bi-tag stat-icon"></i><div><div class="fw-bold fs-4" id="stat-conceptos">–</div><div class="text-muted small">Conceptos</div></div></div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="stat-card"><i class="bi bi-geo-alt stat-icon"></i><div><div class="fw-bold fs-4" id="stat-destinos">–</div><div class="text-muted small">Destinos</div></div></div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="stat-card"><i class="bi bi-box stat-icon"></i><div><div class="fw-bold fs-4" id="stat-productos">–</div><div class="text-muted small">Productos</div></div></div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <div class="stat-card"><i class="bi bi-rulers stat-icon"></i><div><div class="fw-bold fs-4" id="stat-unidades">–</div><div class="text-muted small">Unidades de Medida</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPTOS -->
+  <div id="section-conceptos" class="section">
+    <div class="catalog-card">
+      <h4><i class="bi bi-tag me-2"></i>Conceptos</h4>
+      <form id="form-conceptos" class="row g-2 mb-3">
+        <input type="hidden" id="conceptos-id" />
+        <div class="col-md-4"><input class="form-control" id="conceptos-nombre" placeholder="Nombre *" required /></div>
+        <div class="col-md-5"><input class="form-control" id="conceptos-descripcion" placeholder="Descripción" /></div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom flex-fill"><i class="bi bi-save me-1"></i>Guardar</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="resetForm('conceptos')"><i class="bi bi-x"></i></button>
+        </div>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>#</th><th>Nombre</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-conceptos"><tr><td colspan="4" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTINOS -->
+  <div id="section-destinos" class="section">
+    <div class="catalog-card">
+      <h4><i class="bi bi-geo-alt me-2"></i>Destinos</h4>
+      <form id="form-destinos" class="row g-2 mb-3">
+        <input type="hidden" id="destinos-id" />
+        <div class="col-md-4"><input class="form-control" id="destinos-nombre" placeholder="Nombre *" required /></div>
+        <div class="col-md-5"><input class="form-control" id="destinos-direccion" placeholder="Dirección" /></div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom flex-fill"><i class="bi bi-save me-1"></i>Guardar</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="resetForm('destinos')"><i class="bi bi-x"></i></button>
+        </div>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>#</th><th>Nombre</th><th>Dirección</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-destinos"><tr><td colspan="4" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTOS -->
+  <div id="section-productos" class="section">
+    <div class="catalog-card">
+      <h4><i class="bi bi-box me-2"></i>Productos</h4>
+      <form id="form-productos" class="row g-2 mb-3">
+        <input type="hidden" id="productos-id" />
+        <div class="col-md-3"><input class="form-control" id="productos-nombre" placeholder="Nombre *" required /></div>
+        <div class="col-md-3">
+          <select class="form-select" id="productos-unidad_medida_id">
+            <option value="">— Unidad de Medida —</option>
+          </select>
+        </div>
+        <div class="col-md-2"><input class="form-control" id="productos-precio" type="number" step="0.01" min="0" placeholder="Precio" /></div>
+        <div class="col-md-2"><input class="form-control" id="productos-stock" type="number" min="0" placeholder="Stock" /></div>
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom flex-fill"><i class="bi bi-save me-1"></i>Guardar</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="resetForm('productos')"><i class="bi bi-x"></i></button>
+        </div>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>#</th><th>Nombre</th><th>Unidad</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-productos"><tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNIDADES DE MEDIDA -->
+  <div id="section-unidades" class="section">
+    <div class="catalog-card">
+      <h4><i class="bi bi-rulers me-2"></i>Unidades de Medida</h4>
+      <form id="form-unidades" class="row g-2 mb-3">
+        <input type="hidden" id="unidades-id" />
+        <div class="col-md-5"><input class="form-control" id="unidades-nombre" placeholder="Nombre *" required /></div>
+        <div class="col-md-3"><input class="form-control" id="unidades-abreviatura" placeholder="Abreviatura *" required /></div>
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom flex-fill"><i class="bi bi-save me-1"></i>Guardar</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="resetForm('unidades')"><i class="bi bi-x"></i></button>
+        </div>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>#</th><th>Nombre</th><th>Abreviatura</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-unidades"><tr><td colspan="4" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTRADAS (solo interfaz) -->
+  <div id="section-entradas" class="section">
+    <div class="catalog-card text-center py-5">
+      <i class="bi bi-box-arrow-in-down text-success" style="font-size:3.5rem"></i>
+      <h4 class="mt-3">Entradas de Almacén</h4>
+      <p class="text-muted">Módulo en desarrollo. Disponible en la siguiente fase.</p>
+      <span class="badge bg-warning text-dark">Próximamente</span>
+    </div>
+  </div>
+
+  <!-- SALIDAS (solo interfaz) -->
+  <div id="section-salidas" class="section">
+    <div class="catalog-card text-center py-5">
+      <i class="bi bi-box-arrow-up text-danger" style="font-size:3.5rem"></i>
+      <h4 class="mt-3">Salidas de Almacén</h4>
+      <p class="text-muted">Módulo en desarrollo. Disponible en la siguiente fase.</p>
+      <span class="badge bg-warning text-dark">Próximamente</span>
+    </div>
+  </div>
+
+</div><!-- /main-content -->
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════
+const API = "/api";
+
+// ═══════════════════════════════════════════════════════════════════
+// SPA NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById(`section-${name}`).classList.add("active");
+
+  // Cargar datos al navegar
+  const loaders = {
+    dashboard: loadDashboard,
+    conceptos: () => loadCatalog("conceptos"),
+    destinos:  () => loadCatalog("destinos"),
+    productos: loadProductos,
+    unidades:  () => loadCatalog("unidades"),
+  };
+  if (loaders[name]) loaders[name]();
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+function toast(msg, type = "success") {
+  const id = "t" + Date.now();
+  const icons = { success: "bi-check-circle-fill", danger: "bi-x-circle-fill", warning: "bi-exclamation-circle-fill" };
+  const html = `<div id="${id}" class="toast align-items-center text-white bg-${type} border-0 mb-2 show" role="alert">
+    <div class="d-flex"><div class="toast-body"><i class="bi ${icons[type]||''} me-2"></i>${msg}</div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
+  document.getElementById("toast-container").insertAdjacentHTML("beforeend", html);
+  setTimeout(() => document.getElementById(id)?.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FETCH HELPER
+// ═══════════════════════════════════════════════════════════════════
+async function api(method, url, body) {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Error de servidor");
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const h = await api("GET", `${API}/health`);
+    const el = document.getElementById("db-status");
+    el.innerHTML = h.status === "ok"
+      ? `<i class="bi bi-circle-fill text-success me-1"></i>BD Conectada`
+      : `<i class="bi bi-circle-fill text-danger me-1"></i>BD Error`;
+  } catch {
+    document.getElementById("db-status").innerHTML = `<i class="bi bi-circle-fill text-danger me-1"></i>Sin BD`;
+  }
+
+  const targets = [
+    ["conceptos",     "stat-conceptos"],
+    ["destinos",      "stat-destinos"],
+    ["productos",     "stat-productos"],
+    ["unidades_medida","stat-unidades"],
+  ];
+  for (const [endpoint, statId] of targets) {
+    try {
+      const data = await api("GET", `${API}/${endpoint}`);
+      document.getElementById(statId).textContent = data.length;
+    } catch {
+      document.getElementById(statId).textContent = "–";
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CATÁLOGOS GENÉRICOS
+// ═══════════════════════════════════════════════════════════════════
+
+// Mapeo sección → endpoint + render
+const catalogConfig = {
+  conceptos: {
+    endpoint: "conceptos",
+    cols: ["nombre", "descripcion"],
+    render: r => `<td>${r.nombre}</td><td>${r.descripcion || "–"}</td>`,
+  },
+  destinos: {
+    endpoint: "destinos",
+    cols: ["nombre", "direccion"],
+    render: r => `<td>${r.nombre}</td><td>${r.direccion || "–"}</td>`,
+  },
+  unidades: {
+    endpoint: "unidades_medida",
+    cols: ["nombre", "abreviatura"],
+    render: r => `<td>${r.nombre}</td><td><span class="badge-catalog">${r.abreviatura}</span></td>`,
+  },
+};
+
+async function loadCatalog(key) {
+  const cfg = catalogConfig[key];
+  const tbody = document.getElementById(`tabla-${key}`);
+  tbody.innerHTML = `<tr><td colspan="99" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr>`;
+  try {
+    const data = await api("GET", `${API}/${cfg.endpoint}`);
+    tbody.innerHTML = data.length === 0
+      ? `<tr><td colspan="99" class="text-center text-muted py-4">Sin registros aún.</td></tr>`
+      : data.map(r => `<tr>
+          <td class="text-muted small">${r.id}</td>
+          ${cfg.render(r)}
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editRecord('${key}',${r.id})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteRecord('${key}',${r.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join("");
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="99" class="text-center text-danger py-4">${e.message}</td></tr>`;
+  }
+}
+
+function resetForm(key) {
+  document.getElementById(`${key}-id`).value = "";
+  document.getElementById(`form-${key}`).reset();
+}
+
+async function editRecord(key, id) {
+  const cfg = catalogConfig[key];
+  const r = await api("GET", `${API}/${cfg.endpoint}/${id}`);
+  document.getElementById(`${key}-id`).value = r.id;
+  cfg.cols.forEach(col => {
+    const el = document.getElementById(`${key}-${col}`);
+    if (el) el.value = r[col] ?? "";
+  });
+}
+
+async function deleteRecord(key, id) {
+  if (!confirm("¿Eliminar este registro?")) return;
+  const cfg = catalogConfig[key];
+  try {
+    await api("DELETE", `${API}/${cfg.endpoint}/${id}`);
+    toast("Registro eliminado");
+    loadCatalog(key);
+    if (key === "unidades") loadProductosSelect();
+  } catch (e) { toast(e.message, "danger"); }
+}
+
+// Formularios genéricos
+["conceptos", "destinos", "unidades"].forEach(key => {
+  document.getElementById(`form-${key}`).addEventListener("submit", async e => {
+    e.preventDefault();
+    const cfg = catalogConfig[key];
+    const id  = document.getElementById(`${key}-id`).value;
+    const body = {};
+    cfg.cols.forEach(col => body[col] = document.getElementById(`${key}-${col}`).value.trim());
+    try {
+      if (id) await api("PUT",  `${API}/${cfg.endpoint}/${id}`, body);
+      else    await api("POST", `${API}/${cfg.endpoint}`, body);
+      toast(id ? "Registro actualizado ✓" : "Registro guardado ✓");
+      resetForm(key);
+      loadCatalog(key);
+      if (key === "unidades") loadProductosSelect();
+    } catch (err) { toast(err.message, "danger"); }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// PRODUCTOS (tiene select de unidades)
+// ═══════════════════════════════════════════════════════════════════
+async function loadProductosSelect() {
+  const sel = document.getElementById("productos-unidad_medida_id");
+  const current = sel.value;
+  try {
+    const data = await api("GET", `${API}/unidades_medida`);
+    sel.innerHTML = `<option value="">— Unidad de Medida —</option>` +
+      data.map(u => `<option value="${u.id}">${u.nombre} (${u.abreviatura})</option>`).join("");
+    if (current) sel.value = current;
+  } catch {}
+}
+
+async function loadProductos() {
+  await loadProductosSelect();
+  const tbody = document.getElementById("tabla-productos");
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-hourglass me-2"></i>Cargando…</td></tr>`;
+  try {
+    const [prods, units] = await Promise.all([
+      api("GET", `${API}/productos`),
+      api("GET", `${API}/unidades_medida`),
+    ]);
+    const uMap = Object.fromEntries(units.map(u => [u.id, u.abreviatura]));
+    tbody.innerHTML = prods.length === 0
+      ? `<tr><td colspan="6" class="text-center text-muted py-4">Sin productos aún.</td></tr>`
+      : prods.map(r => `<tr>
+          <td class="text-muted small">${r.id}</td>
+          <td>${r.nombre}</td>
+          <td>${r.unidad_medida_id ? `<span class="badge-catalog">${uMap[r.unidad_medida_id] || r.unidad_medida_id}</span>` : "–"}</td>
+          <td>$${parseFloat(r.precio || 0).toFixed(2)}</td>
+          <td>${r.stock ?? 0}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editProducto(${r.id})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteProducto(${r.id})"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join("");
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">${e.message}</td></tr>`;
+  }
+}
+
+async function editProducto(id) {
+  const r = await api("GET", `${API}/productos/${id}`);
+  document.getElementById("productos-id").value = r.id;
+  document.getElementById("productos-nombre").value = r.nombre;
+  document.getElementById("productos-precio").value = r.precio;
+  document.getElementById("productos-stock").value = r.stock;
+  document.getElementById("productos-unidad_medida_id").value = r.unidad_medida_id || "";
+}
+
+async function deleteProducto(id) {
+  if (!confirm("¿Eliminar este producto?")) return;
+  try {
+    await api("DELETE", `${API}/productos/${id}`);
+    toast("Producto eliminado");
+    loadProductos();
+  } catch (e) { toast(e.message, "danger"); }
+}
+
+document.getElementById("form-productos").addEventListener("submit", async e => {
+  e.preventDefault();
+  const id = document.getElementById("productos-id").value;
+  const body = {
+    nombre:           document.getElementById("productos-nombre").value.trim(),
+    unidad_medida_id: document.getElementById("productos-unidad_medida_id").value || null,
+    precio:           parseFloat(document.getElementById("productos-precio").value) || 0,
+    stock:            parseInt(document.getElementById("productos-stock").value) || 0,
+  };
+  try {
+    if (id) await api("PUT",  `${API}/productos/${id}`, body);
+    else    await api("POST", `${API}/productos`, body);
+    toast(id ? "Producto actualizado ✓" : "Producto guardado ✓");
+    resetForm("productos");
+    loadProductos();
+  } catch (err) { toast(err.message, "danger"); }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+loadDashboard();
+</script>
+</body>
+</html>
