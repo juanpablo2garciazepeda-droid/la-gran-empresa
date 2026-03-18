@@ -56,9 +56,67 @@ async function initDB() {
       codigo VARCHAR(50) DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    // Agregar columnas si no existen (para tablas ya creadas)
     try { await conn.query(`ALTER TABLE productos ADD COLUMN categoria VARCHAR(100) DEFAULT 'General'`); } catch(e) {}
     try { await conn.query(`ALTER TABLE productos ADD COLUMN codigo VARCHAR(50) DEFAULT ''`); } catch(e) {}
+
+    await conn.query(`CREATE TABLE IF NOT EXISTS proveedores (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      razon_social VARCHAR(200) NOT NULL,
+      rfc VARCHAR(13) NOT NULL,
+      contacto VARCHAR(150),
+      telefono VARCHAR(20),
+      email VARCHAR(150),
+      direccion VARCHAR(255),
+      ciudad VARCHAR(100),
+      estado VARCHAR(100),
+      cp VARCHAR(10),
+      notas TEXT,
+      activo TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await conn.query(`CREATE TABLE IF NOT EXISTS entradas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      folio VARCHAR(50),
+      proveedor_id INT,
+      concepto_id INT,
+      destino_id INT,
+      fecha DATE NOT NULL,
+      descripcion TEXT,
+      total DECIMAL(12,2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await conn.query(`CREATE TABLE IF NOT EXISTS entrada_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      entrada_id INT NOT NULL,
+      producto_id INT,
+      nombre VARCHAR(150) NOT NULL,
+      cantidad INT DEFAULT 0,
+      precio_unitario DECIMAL(10,2) DEFAULT 0,
+      subtotal DECIMAL(12,2) DEFAULT 0,
+      FOREIGN KEY (entrada_id) REFERENCES entradas(id) ON DELETE CASCADE
+    )`);
+
+    await conn.query(`CREATE TABLE IF NOT EXISTS salidas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      folio VARCHAR(50),
+      destino_id INT,
+      concepto_id INT,
+      fecha DATE NOT NULL,
+      descripcion TEXT,
+      total DECIMAL(12,2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await conn.query(`CREATE TABLE IF NOT EXISTS salida_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      salida_id INT NOT NULL,
+      producto_id INT,
+      nombre VARCHAR(150) NOT NULL,
+      cantidad INT DEFAULT 0,
+      precio_unitario DECIMAL(10,2) DEFAULT 0,
+      subtotal DECIMAL(12,2) DEFAULT 0,
+      FOREIGN KEY (salida_id) REFERENCES salidas(id) ON DELETE CASCADE
+    )`);
 
     await conn.query(`CREATE TABLE IF NOT EXISTS ventas (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -83,7 +141,7 @@ async function initDB() {
   }
 }
 
-// ─── Health ──────────────────────────────────────────────────────────────────
+// ── Health ────────────────────────────────────────────────────────────────────
 app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -94,12 +152,12 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ─── Middleware initDB ────────────────────────────────────────────────────────
-app.use(["/api/conceptos","/api/destinos","/api/productos","/api/unidades_medida","/api/ventas"], async (req, res, next) => {
+// ── Middleware initDB ─────────────────────────────────────────────────────────
+app.use("/api", async (req, res, next) => {
   try { await initDB(); next(); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── CRUD genérico ────────────────────────────────────────────────────────────
+// ── CRUD genérico ─────────────────────────────────────────────────────────────
 function catalog(table, fields) {
   const router = express.Router();
   router.get("/", async (req, res) => {
@@ -117,7 +175,7 @@ function catalog(table, fields) {
     try {
       const vals = fields.map(f => req.body[f] ?? null);
       const [result] = await pool.query(
-        `INSERT INTO ${table} (${fields.join(",")}) VALUES (${fields.map(()=>"?").join(",")})`, vals
+        `INSERT INTO ${table} (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`, vals
       );
       const [rows] = await pool.query(`SELECT * FROM ${table} WHERE id = ?`, [result.insertId]);
       res.status(201).json(rows[0]);
@@ -138,32 +196,28 @@ function catalog(table, fields) {
   return router;
 }
 
-// ─── Catálogos ───────────────────────────────────────────────────────────────
+// ── Catálogos ─────────────────────────────────────────────────────────────────
 app.use("/api/conceptos",       catalog("conceptos",       ["nombre","descripcion"]));
 app.use("/api/destinos",        catalog("destinos",        ["nombre","direccion"]));
 app.use("/api/unidades_medida", catalog("unidades_medida", ["nombre","abreviatura"]));
 app.use("/api/productos",       catalog("productos",       ["nombre","unidad_medida_id","precio","stock","categoria","codigo"]));
+app.use("/api/proveedores",     catalog("proveedores",     ["razon_social","rfc","contacto","telefono","email","direccion","ciudad","estado","cp","notas","activo"]));
 
-// ─── Stock rápido (PATCH) ─────────────────────────────────────────────────────
+// ── Stock rápido ──────────────────────────────────────────────────────────────
 app.patch("/api/productos/:id/stock", async (req, res) => {
   try {
-    const { stock } = req.body;
-    await pool.query("UPDATE productos SET stock = ? WHERE id = ?", [stock, req.params.id]);
+    await pool.query("UPDATE productos SET stock = ? WHERE id = ?", [req.body.stock, req.params.id]);
     const [rows] = await pool.query("SELECT * FROM productos WHERE id = ?", [req.params.id]);
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Ventas ──────────────────────────────────────────────────────────────────
+// ── Ventas ────────────────────────────────────────────────────────────────────
 app.get("/api/ventas", async (req, res) => {
   try {
     const [ventas] = await pool.query("SELECT * FROM ventas ORDER BY created_at DESC LIMIT 100");
     const [items] = await pool.query("SELECT * FROM venta_items ORDER BY venta_id DESC");
-    const result = ventas.map(v => ({
-      ...v,
-      items: items.filter(i => i.venta_id === v.id)
-    }));
-    res.json(result);
+    res.json(ventas.map(v => ({ ...v, items: items.filter(i => i.venta_id === v.id) })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -172,44 +226,52 @@ app.post("/api/ventas", async (req, res) => {
   try {
     await conn.beginTransaction();
     const { subtotal, iva, total, monto_recibido, cambio, items } = req.body;
-
     const [result] = await conn.query(
-      "INSERT INTO ventas (subtotal, iva, total, monto_recibido, cambio) VALUES (?,?,?,?,?)",
+      "INSERT INTO ventas (subtotal,iva,total,monto_recibido,cambio) VALUES (?,?,?,?,?)",
       [subtotal, iva, total, monto_recibido, cambio]
     );
-    const ventaId = result.insertId;
-
     for (const item of items) {
-      await conn.query(
-        "INSERT INTO venta_items (venta_id, producto_id, nombre, precio, cantidad) VALUES (?,?,?,?,?)",
-        [ventaId, item.id, item.nombre, item.precio, item.cantidad]
-      );
-      // Descontar stock
-      await conn.query(
-        "UPDATE productos SET stock = GREATEST(0, stock - ?) WHERE id = ?",
-        [item.cantidad, item.id]
-      );
+      await conn.query("INSERT INTO venta_items (venta_id,producto_id,nombre,precio,cantidad) VALUES (?,?,?,?,?)",
+        [result.insertId, item.id, item.nombre, item.precio, item.cantidad]);
+      await conn.query("UPDATE productos SET stock=GREATEST(0,stock-?) WHERE id=?", [item.cantidad, item.id]);
     }
-
     await conn.commit();
-    const [venta] = await conn.query("SELECT * FROM ventas WHERE id = ?", [ventaId]);
-    const [ventaItems] = await conn.query("SELECT * FROM venta_items WHERE venta_id = ?", [ventaId]);
+    const [venta] = await conn.query("SELECT * FROM ventas WHERE id=?", [result.insertId]);
+    const [ventaItems] = await conn.query("SELECT * FROM venta_items WHERE venta_id=?", [result.insertId]);
     res.status(201).json({ ...venta[0], items: ventaItems });
-  } catch (err) {
-    await conn.rollback();
-    res.status(500).json({ error: err.message });
-  } finally {
-    conn.release();
-  }
+  } catch (err) { await conn.rollback(); res.status(500).json({ error: err.message }); }
+  finally { conn.release(); }
 });
 
-// ─── SPA fallback ─────────────────────────────────────────────────────────────
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
+// ── Reportes ──────────────────────────────────────────────────────────────────
+app.get("/api/reportes/catalogos", async (req, res) => {
+  try {
+    const tables = ["conceptos","destinos","productos","unidades_medida","proveedores"];
+    const counts = {};
+    for (const t of tables) {
+      const [[row]] = await pool.query(`SELECT COUNT(*) as c FROM ${t}`);
+      counts[t] = row.c;
+    }
+    const [[stockRow]] = await pool.query("SELECT SUM(stock) as total, COUNT(*) as prods FROM productos");
+    res.json({ counts, stock_total: stockRow.total || 0, productos_count: stockRow.prods || 0 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+app.get("/api/reportes/movimientos", async (req, res) => {
+  try {
+    const [[eRow]] = await pool.query("SELECT COUNT(*) as total, COALESCE(SUM(total),0) as monto FROM entradas");
+    const [[sRow]] = await pool.query("SELECT COUNT(*) as total, COALESCE(SUM(total),0) as monto FROM salidas");
+    const [[vRow]] = await pool.query("SELECT COUNT(*) as total, COALESCE(SUM(total),0) as monto FROM ventas");
+    const [recientes_e] = await pool.query("SELECT e.*, p.razon_social as proveedor FROM entradas e LEFT JOIN proveedores p ON e.proveedor_id=p.id ORDER BY e.created_at DESC LIMIT 10");
+    const [recientes_s] = await pool.query("SELECT s.*, d.nombre as destino_nombre FROM salidas s LEFT JOIN destinos d ON s.destino_id=d.id ORDER BY s.created_at DESC LIMIT 10");
+    res.json({ entradas: eRow, salidas: sRow, ventas: vRow, recientes_entradas: recientes_e, recientes_salidas: recientes_s });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── SPA fallback ──────────────────────────────────────────────────────────────
+app.get("*", (req, res) => res.sendFile(path.join(__dirname, "../public/index.html")));
 
 if (require.main === module) {
   app.listen(process.env.PORT || 3000, () => console.log("🚀 Listo"));
 }
-
 module.exports = app;
