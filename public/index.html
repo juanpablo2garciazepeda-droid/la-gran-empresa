@@ -559,19 +559,9 @@ async function submitProducto(e) {
 // ── RFC Validación ──
 function validarRFC(input) {
   input.value = input.value.toUpperCase();
-  const rfc = input.value;
-  // Persona moral: 3 letras + 6 dígitos + 3 alfanuméricos = 12
-  // Persona física: 4 letras + 6 dígitos + 3 alfanuméricos = 13
-  const re = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
   const msg = document.getElementById('rfc-msg');
-  if (rfc.length === 0) { input.classList.remove('rfc-valid','rfc-invalid'); msg.style.display='none'; return; }
-  if (re.test(rfc)) {
-    input.classList.remove('rfc-invalid'); input.classList.add('rfc-valid');
-    msg.style.display='block'; msg.style.color='#15803d'; msg.textContent='✓ RFC válido';
-  } else {
-    input.classList.remove('rfc-valid'); input.classList.add('rfc-invalid');
-    msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Formato: 3-4 letras + 6 dígitos + 3 alfanuméricos (ej: XAXX010101000)';
-  }
+  msg.style.display = 'none';
+  input.classList.remove('rfc-valid','rfc-invalid');
 }
 
 // ── Proveedores ──
@@ -626,8 +616,7 @@ async function submitProveedor(e) {
   e.preventDefault();
   const id=document.getElementById('proveedores-id').value;
   const rfc=document.getElementById('prov-rfc').value.trim();
-  const re=/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
-  if(!re.test(rfc)){toast('RFC inválido. Verifica el formato.','danger');return;}
+  if(!rfc){toast('El RFC es requerido','danger');return;}
   const body={
     razon_social:document.getElementById('prov-razon_social').value.trim(),
     rfc,
