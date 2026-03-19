@@ -743,75 +743,96 @@ async function loadReporteCatalogos() {
   const prodEl  = document.getElementById('reporte-productos-tabla');
   const provEl  = document.getElementById('reporte-proveedores-tabla');
 
-  // Cards
   cardsEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  try {
-    const data = await api('GET', `${API}/reportes/catalogos`);
-    const c = data.counts || {};
-    cardsEl.innerHTML = `
-      <div class="report-card blue"><div class="rc-num">${c.conceptos||0}</div><div class="rc-lbl">Conceptos</div></div>
-      <div class="report-card amber"><div class="rc-num">${c.destinos||0}</div><div class="rc-lbl">Destinos</div></div>
-      <div class="report-card green"><div class="rc-num">${c.productos||0}</div><div class="rc-lbl">Productos</div></div>
-      <div class="report-card navy"><div class="rc-num">${c.unidades_medida||0}</div><div class="rc-lbl">Unidades de Medida</div></div>
-      <div class="report-card purple"><div class="rc-num">${c.proveedores||0}</div><div class="rc-lbl">Proveedores</div></div>
-      <div class="report-card amber"><div class="rc-num">${data.stock_total||0}</div><div class="rc-lbl">Unidades en Stock</div></div>
-    `;
-  } catch(e) {
-    cardsEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`;
-  }
+  prodEl.innerHTML  = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  provEl.innerHTML  = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
 
-  // Productos
-  prodEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  try {
-    const [prods, units] = await Promise.all([api('GET',`${API}/productos`), api('GET',`${API}/unidades_medida`)]);
-    const uMap = Object.fromEntries(units.map(u=>[u.id,u.abreviatura]));
-    prodEl.innerHTML = !prods.length ? '<div class="dt-empty">Sin productos registrados.</div>' : `
-      <div class="dt-head" style="grid-template-columns:50px 2fr 1fr 100px 80px"><span>#</span><span>Nombre</span><span>Unidad</span><span>Precio</span><span>Stock</span></div>
-      ${prods.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 1fr 100px 80px">
-        <div class="dt-id">${r.id}</div><div class="dt-main">${r.nombre}</div>
-        <div>${r.unidad_medida_id?`<span class="dt-badge">${uMap[r.unidad_medida_id]||'?'}</span>`:'—'}</div>
-        <div style="font-weight:600;color:#b8700a">$${parseFloat(r.precio||0).toFixed(2)}</div>
-        <div style="font-weight:600;color:${(r.stock||0)<5?'var(--red)':'var(--text)'}">${r.stock??0}</div>
-      </div>`).join('')}`;
-  } catch(e) { prodEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`; }
+  // Cargar todo en paralelo usando endpoints que ya funcionan
+  const [concs, dests, prods, units, provs] = await Promise.allSettled([
+    api('GET',`${API}/conceptos`),
+    api('GET',`${API}/destinos`),
+    api('GET',`${API}/productos`),
+    api('GET',`${API}/unidades_medida`),
+    api('GET',`${API}/proveedores`),
+  ]);
 
-  // Proveedores
-  provEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  try {
-    const provs = await api('GET',`${API}/proveedores`);
-    provEl.innerHTML = !provs.length ? '<div class="dt-empty">Sin proveedores registrados.</div>' : `
-      <div class="dt-head" style="grid-template-columns:50px 2fr 140px 1fr 80px"><span>#</span><span>Razón Social</span><span>RFC</span><span>Ciudad / Estado</span><span>Estatus</span></div>
-      ${provs.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 140px 1fr 80px">
-        <div class="dt-id">${r.id}</div><div class="dt-main">${r.razon_social}</div>
-        <div style="font-family:monospace;font-size:12px;font-weight:600">${r.rfc}</div>
-        <div class="dt-sub">${r.ciudad||'—'}${r.estado?', '+r.estado:''}</div>
-        <div><span class="${r.activo?'dt-badge-green':'dt-badge-red'}">${r.activo?'Activo':'Inactivo'}</span></div>
-      </div>`).join('')}`;
-  } catch(e) { provEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`; }
+  const get = r => r.status === 'fulfilled' ? r.value : [];
+  const C = get(concs), D = get(dests), P = get(prods), U = get(units), PR = get(provs);
+  const stockTotal = P.reduce((s,p)=>s+(p.stock||0),0);
+  const uMap = Object.fromEntries(U.map(u=>[u.id,u.abreviatura]));
+
+  // Cards
+  cardsEl.innerHTML = `
+    <div class="report-card blue"><div class="rc-num">${C.length}</div><div class="rc-lbl">Conceptos</div></div>
+    <div class="report-card amber"><div class="rc-num">${D.length}</div><div class="rc-lbl">Destinos</div></div>
+    <div class="report-card green"><div class="rc-num">${P.length}</div><div class="rc-lbl">Productos</div></div>
+    <div class="report-card navy"><div class="rc-num">${U.length}</div><div class="rc-lbl">Unidades de Medida</div></div>
+    <div class="report-card purple"><div class="rc-num">${PR.length}</div><div class="rc-lbl">Proveedores</div></div>
+    <div class="report-card amber"><div class="rc-num">${stockTotal}</div><div class="rc-lbl">Unidades en Stock</div></div>
+  `;
+
+  // Tabla productos
+  prodEl.innerHTML = !P.length ? '<div class="dt-empty">Sin productos registrados.</div>' : `
+    <div class="dt-head" style="grid-template-columns:50px 2fr 1fr 100px 80px"><span>#</span><span>Nombre</span><span>Unidad</span><span>Precio</span><span>Stock</span></div>
+    ${P.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 1fr 100px 80px">
+      <div class="dt-id">${r.id}</div><div class="dt-main">${r.nombre}</div>
+      <div>${r.unidad_medida_id?`<span class="dt-badge">${uMap[r.unidad_medida_id]||'?'}</span>`:'—'}</div>
+      <div style="font-weight:600;color:#b8700a">$${parseFloat(r.precio||0).toFixed(2)}</div>
+      <div style="font-weight:600;color:${(r.stock||0)<5?'var(--red)':'var(--text)'}">${r.stock??0}</div>
+    </div>`).join('')}`;
+
+  // Tabla proveedores
+  provEl.innerHTML = !PR.length ? '<div class="dt-empty">Sin proveedores registrados.</div>' : `
+    <div class="dt-head" style="grid-template-columns:50px 2fr 140px 1fr 80px"><span>#</span><span>Razón Social</span><span>RFC</span><span>Ciudad / Estado</span><span>Estatus</span></div>
+    ${PR.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 140px 1fr 80px">
+      <div class="dt-id">${r.id}</div><div class="dt-main">${r.razon_social}</div>
+      <div style="font-family:monospace;font-size:12px;font-weight:600">${r.rfc}</div>
+      <div class="dt-sub">${r.ciudad||'—'}${r.estado?', '+r.estado:''}</div>
+      <div><span class="${r.activo?'dt-badge-green':'dt-badge-red'}">${r.activo?'Activo':'Inactivo'}</span></div>
+    </div>`).join('')}`;
 }
 
 async function loadReporteMovimientos() {
-  try {
-    const data = await api('GET', `${API}/reportes/movimientos`);
-    document.getElementById('reporte-mov-cards').innerHTML=`
-      <div class="report-card green"><div class="rc-num">${data.entradas.total||0}</div><div class="rc-lbl">Total Entradas</div></div>
-      <div class="report-card green"><div class="rc-num">$${parseFloat(data.entradas.monto||0).toFixed(2)}</div><div class="rc-lbl">Monto Entradas</div></div>
-      <div class="report-card red"><div class="rc-num">${data.salidas.total||0}</div><div class="rc-lbl">Total Salidas</div></div>
-      <div class="report-card red"><div class="rc-num">$${parseFloat(data.salidas.monto||0).toFixed(2)}</div><div class="rc-lbl">Monto Salidas</div></div>
-      <div class="report-card amber"><div class="rc-num">${data.ventas.total||0}</div><div class="rc-lbl">Ventas POS</div></div>
-      <div class="report-card amber"><div class="rc-num">$${parseFloat(data.ventas.monto||0).toFixed(2)}</div><div class="rc-lbl">Monto Ventas</div></div>
-    `;
+  const cardsEl = document.getElementById('reporte-mov-cards');
+  const eEl = document.getElementById('reporte-entradas-tabla');
+  const sEl = document.getElementById('reporte-salidas-tabla');
 
-    const eEl=document.getElementById('reporte-entradas-tabla');
-    if(!data.recientes_entradas.length){eEl.innerHTML='<div class="dt-empty">Sin entradas registradas.</div>';}
-    else{eEl.innerHTML=`<div class="dt-head" style="grid-template-columns:50px 1fr 1fr 90px"><span>#</span><span>Fecha</span><span>Proveedor</span><span>Total</span></div>`+
-      data.recientes_entradas.map(r=>`<div class="dt-row" style="grid-template-columns:50px 1fr 1fr 90px"><div class="dt-id">${r.id}</div><div>${r.fecha}</div><div class="dt-sub">${r.proveedor||'—'}</div><div style="font-weight:700;color:#15803d">$${parseFloat(r.total||0).toFixed(2)}</div></div>`).join('');}
+  cardsEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  eEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  sEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
 
-    const sEl=document.getElementById('reporte-salidas-tabla');
-    if(!data.recientes_salidas.length){sEl.innerHTML='<div class="dt-empty">Sin salidas registradas.</div>';}
-    else{sEl.innerHTML=`<div class="dt-head" style="grid-template-columns:50px 1fr 1fr 90px"><span>#</span><span>Fecha</span><span>Destino</span><span>Total</span></div>`+
-      data.recientes_salidas.map(r=>`<div class="dt-row" style="grid-template-columns:50px 1fr 1fr 90px"><div class="dt-id">${r.id}</div><div>${r.fecha}</div><div class="dt-sub">${r.destino_nombre||'—'}</div><div style="font-weight:700;color:#dc2626">$${parseFloat(r.total||0).toFixed(2)}</div></div>`).join('');}
-  } catch(e){ toast(e.message,'danger'); }
+  const [entR, salR] = await Promise.allSettled([
+    api('GET',`${API}/entradas`),
+    api('GET',`${API}/salidas`),
+  ]);
+
+  const ents = entR.status==='fulfilled' ? entR.value : [];
+  const sals = salR.status==='fulfilled' ? salR.value : [];
+  const montoE = ents.reduce((s,e)=>s+parseFloat(e.total||0),0);
+  const montoS = sals.reduce((s,e)=>s+parseFloat(e.total||0),0);
+
+  cardsEl.innerHTML = `
+    <div class="report-card green"><div class="rc-num">${ents.length}</div><div class="rc-lbl">Total Entradas</div></div>
+    <div class="report-card green"><div class="rc-num">$${montoE.toFixed(2)}</div><div class="rc-lbl">Monto Entradas</div></div>
+    <div class="report-card red"><div class="rc-num">${sals.length}</div><div class="rc-lbl">Total Salidas</div></div>
+    <div class="report-card red"><div class="rc-num">$${montoS.toFixed(2)}</div><div class="rc-lbl">Monto Salidas</div></div>
+  `;
+
+  eEl.innerHTML = !ents.length ? '<div class="dt-empty">Sin entradas registradas.</div>' : `
+    <div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Proveedor</span><span>Total</span></div>
+    ${ents.slice(0,10).map(r=>`<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">
+      <div class="dt-id">${r.id}</div><div style="font-size:13px">${r.fecha||'—'}</div>
+      <div class="dt-sub">${r.proveedor||'—'}</div>
+      <div style="font-weight:700;color:#15803d">$${parseFloat(r.total||0).toFixed(2)}</div>
+    </div>`).join('')}`;
+
+  sEl.innerHTML = !sals.length ? '<div class="dt-empty">Sin salidas registradas.</div>' : `
+    <div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Destino</span><span>Total</span></div>
+    ${sals.slice(0,10).map(r=>`<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">
+      <div class="dt-id">${r.id}</div><div style="font-size:13px">${r.fecha||'—'}</div>
+      <div class="dt-sub">${r.destino||'—'}</div>
+      <div style="font-weight:700;color:#dc2626">$${parseFloat(r.total||0).toFixed(2)}</div>
+    </div>`).join('')}`;
 }
 
 // ── Entradas & Salidas ──────────────────────────────────────────────────────
