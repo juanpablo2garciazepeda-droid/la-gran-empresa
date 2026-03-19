@@ -739,47 +739,55 @@ async function submitProveedor(e) {
 
 // ── Reportes ──
 async function loadReporteCatalogos() {
+  const cardsEl = document.getElementById('reporte-cats-cards');
+  const prodEl  = document.getElementById('reporte-productos-tabla');
+  const provEl  = document.getElementById('reporte-proveedores-tabla');
+
+  // Cards
+  cardsEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
   try {
     const data = await api('GET', `${API}/reportes/catalogos`);
-    const cardsEl = document.getElementById('reporte-cats-cards');
+    const c = data.counts || {};
     cardsEl.innerHTML = `
-      <div class="report-card blue"><div class="rc-num">${data.counts.conceptos||0}</div><div class="rc-lbl">Conceptos</div></div>
-      <div class="report-card amber"><div class="rc-num">${data.counts.destinos||0}</div><div class="rc-lbl">Destinos</div></div>
-      <div class="report-card green"><div class="rc-num">${data.counts.productos||0}</div><div class="rc-lbl">Productos</div></div>
-      <div class="report-card navy"><div class="rc-num">${data.counts.unidades_medida||0}</div><div class="rc-lbl">Unidades de Medida</div></div>
-      <div class="report-card purple"><div class="rc-num">${data.counts.proveedores||0}</div><div class="rc-lbl">Proveedores</div></div>
+      <div class="report-card blue"><div class="rc-num">${c.conceptos||0}</div><div class="rc-lbl">Conceptos</div></div>
+      <div class="report-card amber"><div class="rc-num">${c.destinos||0}</div><div class="rc-lbl">Destinos</div></div>
+      <div class="report-card green"><div class="rc-num">${c.productos||0}</div><div class="rc-lbl">Productos</div></div>
+      <div class="report-card navy"><div class="rc-num">${c.unidades_medida||0}</div><div class="rc-lbl">Unidades de Medida</div></div>
+      <div class="report-card purple"><div class="rc-num">${c.proveedores||0}</div><div class="rc-lbl">Proveedores</div></div>
       <div class="report-card amber"><div class="rc-num">${data.stock_total||0}</div><div class="rc-lbl">Unidades en Stock</div></div>
     `;
+  } catch(e) {
+    cardsEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
 
-    // Tabla de productos
-    const prodEl = document.getElementById('reporte-productos-tabla');
-    const [prods,units] = await Promise.all([api('GET',`${API}/productos`),api('GET',`${API}/unidades_medida`)]);
+  // Productos
+  prodEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const [prods, units] = await Promise.all([api('GET',`${API}/productos`), api('GET',`${API}/unidades_medida`)]);
     const uMap = Object.fromEntries(units.map(u=>[u.id,u.abreviatura]));
-    if(!prods.length){prodEl.innerHTML='<div class="dt-empty">Sin productos.</div>';return;}
-    prodEl.innerHTML=`
+    prodEl.innerHTML = !prods.length ? '<div class="dt-empty">Sin productos registrados.</div>' : `
       <div class="dt-head" style="grid-template-columns:50px 2fr 1fr 100px 80px"><span>#</span><span>Nombre</span><span>Unidad</span><span>Precio</span><span>Stock</span></div>
       ${prods.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 1fr 100px 80px">
-        <div class="dt-id">${r.id}</div>
-        <div class="dt-main">${r.nombre}</div>
+        <div class="dt-id">${r.id}</div><div class="dt-main">${r.nombre}</div>
         <div>${r.unidad_medida_id?`<span class="dt-badge">${uMap[r.unidad_medida_id]||'?'}</span>`:'—'}</div>
         <div style="font-weight:600;color:#b8700a">$${parseFloat(r.precio||0).toFixed(2)}</div>
         <div style="font-weight:600;color:${(r.stock||0)<5?'var(--red)':'var(--text)'}">${r.stock??0}</div>
       </div>`).join('')}`;
+  } catch(e) { prodEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`; }
 
-    // Tabla de proveedores
-    const provEl = document.getElementById('reporte-proveedores-tabla');
+  // Proveedores
+  provEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  try {
     const provs = await api('GET',`${API}/proveedores`);
-    if(!provs.length){provEl.innerHTML='<div class="dt-empty">Sin proveedores.</div>';return;}
-    provEl.innerHTML=`
+    provEl.innerHTML = !provs.length ? '<div class="dt-empty">Sin proveedores registrados.</div>' : `
       <div class="dt-head" style="grid-template-columns:50px 2fr 140px 1fr 80px"><span>#</span><span>Razón Social</span><span>RFC</span><span>Ciudad / Estado</span><span>Estatus</span></div>
       ${provs.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 140px 1fr 80px">
-        <div class="dt-id">${r.id}</div>
-        <div class="dt-main">${r.razon_social}</div>
+        <div class="dt-id">${r.id}</div><div class="dt-main">${r.razon_social}</div>
         <div style="font-family:monospace;font-size:12px;font-weight:600">${r.rfc}</div>
         <div class="dt-sub">${r.ciudad||'—'}${r.estado?', '+r.estado:''}</div>
         <div><span class="${r.activo?'dt-badge-green':'dt-badge-red'}">${r.activo?'Activo':'Inactivo'}</span></div>
       </div>`).join('')}`;
-  } catch(e){ toast(e.message,'danger'); }
+  } catch(e) { provEl.innerHTML = `<div class="dt-empty" style="color:var(--red)">Error: ${e.message}</div>`; }
 }
 
 async function loadReporteMovimientos() {

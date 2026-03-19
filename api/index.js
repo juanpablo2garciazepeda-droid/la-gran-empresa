@@ -324,14 +324,19 @@ app.post("/api/ventas", async (req, res) => {
 // ── Reportes ──────────────────────────────────────────────────────────────────
 app.get("/api/reportes/catalogos", async (req, res) => {
   try {
-    const tables = ["conceptos","destinos","productos","unidades_medida","proveedores"];
     const counts = {};
-    for (const t of tables) {
-      const [[row]] = await pool.query(`SELECT COUNT(*) as c FROM ${t}`);
-      counts[t] = row.c;
+    for (const t of ["conceptos","destinos","productos","unidades_medida","proveedores"]) {
+      try {
+        const [[row]] = await pool.query(`SELECT COUNT(*) as c FROM \`${t}\``);
+        counts[t] = Number(row.c) || 0;
+      } catch { counts[t] = 0; }
     }
-    const [[stockRow]] = await pool.query("SELECT SUM(stock) as total, COUNT(*) as prods FROM productos");
-    res.json({ counts, stock_total: stockRow.total || 0, productos_count: stockRow.prods || 0 });
+    let stock_total = 0;
+    try {
+      const [[sr]] = await pool.query("SELECT COALESCE(SUM(stock),0) as total FROM productos");
+      stock_total = Number(sr.total) || 0;
+    } catch {}
+    res.json({ counts, stock_total });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
