@@ -738,101 +738,121 @@ async function submitProveedor(e) {
 }
 
 // ── Reportes ──
+function renderProdRow(r, uMap) {
+  var u = r.unidad_medida_id ? '<span class="dt-badge">' + (uMap[r.unidad_medida_id]||'?') + '</span>' : '—';
+  var color = (r.stock||0) < 5 ? 'var(--red)' : 'var(--text)';
+  return '<div class="dt-row" style="grid-template-columns:50px 2fr 1fr 100px 80px">' +
+    '<div class="dt-id">' + r.id + '</div>' +
+    '<div class="dt-main">' + r.nombre + '</div>' +
+    '<div>' + u + '</div>' +
+    '<div style="font-weight:600;color:#b8700a">$' + parseFloat(r.precio||0).toFixed(2) + '</div>' +
+    '<div style="font-weight:600;color:' + color + '">' + (r.stock||0) + '</div>' +
+    '</div>';
+}
+
+function renderProvRow(r) {
+  var ciudad = (r.ciudad||'—') + (r.estado ? ', ' + r.estado : '');
+  var badge = r.activo ? '<span class="dt-badge-green">Activo</span>' : '<span class="dt-badge-red">Inactivo</span>';
+  return '<div class="dt-row" style="grid-template-columns:50px 2fr 140px 1fr 80px">' +
+    '<div class="dt-id">' + r.id + '</div>' +
+    '<div class="dt-main">' + r.razon_social + '</div>' +
+    '<div style="font-family:monospace;font-size:12px;font-weight:600">' + r.rfc + '</div>' +
+    '<div class="dt-sub">' + ciudad + '</div>' +
+    '<div>' + badge + '</div>' +
+    '</div>';
+}
+
 async function loadReporteCatalogos() {
-  const cardsEl = document.getElementById('reporte-cats-cards');
-  const prodEl  = document.getElementById('reporte-productos-tabla');
-  const provEl  = document.getElementById('reporte-proveedores-tabla');
+  var cardsEl = document.getElementById('reporte-cats-cards');
+  var prodEl  = document.getElementById('reporte-productos-tabla');
+  var provEl  = document.getElementById('reporte-proveedores-tabla');
+  var loading = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
 
-  cardsEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  prodEl.innerHTML  = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  provEl.innerHTML  = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  cardsEl.innerHTML = loading;
+  prodEl.innerHTML  = loading;
+  provEl.innerHTML  = loading;
 
-  // Cargar todo en paralelo usando endpoints que ya funcionan
-  const [concs, dests, prods, units, provs] = await Promise.allSettled([
-    api('GET',`${API}/conceptos`),
-    api('GET',`${API}/destinos`),
-    api('GET',`${API}/productos`),
-    api('GET',`${API}/unidades_medida`),
-    api('GET',`${API}/proveedores`),
-  ]);
+  var C=[], D=[], P=[], U=[], PR=[];
 
-  const get = r => r.status === 'fulfilled' ? r.value : [];
-  const C = get(concs), D = get(dests), P = get(prods), U = get(units), PR = get(provs);
-  const stockTotal = P.reduce((s,p)=>s+(p.stock||0),0);
-  const uMap = Object.fromEntries(U.map(u=>[u.id,u.abreviatura]));
+  try { C = await api('GET', API+'/conceptos'); } catch(e) {}
+  try { D = await api('GET', API+'/destinos'); } catch(e) {}
+  try { P = await api('GET', API+'/productos'); } catch(e) {}
+  try { U = await api('GET', API+'/unidades_medida'); } catch(e) {}
+  try { PR = await api('GET', API+'/proveedores'); } catch(e) {}
 
-  // Cards
-  cardsEl.innerHTML = `
-    <div class="report-card blue"><div class="rc-num">${C.length}</div><div class="rc-lbl">Conceptos</div></div>
-    <div class="report-card amber"><div class="rc-num">${D.length}</div><div class="rc-lbl">Destinos</div></div>
-    <div class="report-card green"><div class="rc-num">${P.length}</div><div class="rc-lbl">Productos</div></div>
-    <div class="report-card navy"><div class="rc-num">${U.length}</div><div class="rc-lbl">Unidades de Medida</div></div>
-    <div class="report-card purple"><div class="rc-num">${PR.length}</div><div class="rc-lbl">Proveedores</div></div>
-    <div class="report-card amber"><div class="rc-num">${stockTotal}</div><div class="rc-lbl">Unidades en Stock</div></div>
-  `;
+  var stockTotal = P.reduce(function(s,p){ return s+(p.stock||0); }, 0);
+  var uMap = {};
+  U.forEach(function(u){ uMap[u.id] = u.abreviatura; });
 
-  // Tabla productos
-  prodEl.innerHTML = !P.length ? '<div class="dt-empty">Sin productos registrados.</div>' : `
-    <div class="dt-head" style="grid-template-columns:50px 2fr 1fr 100px 80px"><span>#</span><span>Nombre</span><span>Unidad</span><span>Precio</span><span>Stock</span></div>
-    ${P.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 1fr 100px 80px">
-      <div class="dt-id">${r.id}</div><div class="dt-main">${r.nombre}</div>
-      <div>${r.unidad_medida_id?`<span class="dt-badge">${uMap[r.unidad_medida_id]||'?'}</span>`:'—'}</div>
-      <div style="font-weight:600;color:#b8700a">$${parseFloat(r.precio||0).toFixed(2)}</div>
-      <div style="font-weight:600;color:${(r.stock||0)<5?'var(--red)':'var(--text)'}">${r.stock??0}</div>
-    </div>`).join('')}`;
+  cardsEl.innerHTML =
+    '<div class="report-card blue"><div class="rc-num">'+C.length+'</div><div class="rc-lbl">Conceptos</div></div>' +
+    '<div class="report-card amber"><div class="rc-num">'+D.length+'</div><div class="rc-lbl">Destinos</div></div>' +
+    '<div class="report-card green"><div class="rc-num">'+P.length+'</div><div class="rc-lbl">Productos</div></div>' +
+    '<div class="report-card navy"><div class="rc-num">'+U.length+'</div><div class="rc-lbl">Unidades de Medida</div></div>' +
+    '<div class="report-card purple"><div class="rc-num">'+PR.length+'</div><div class="rc-lbl">Proveedores</div></div>' +
+    '<div class="report-card amber"><div class="rc-num">'+stockTotal+'</div><div class="rc-lbl">Unidades en Stock</div></div>';
 
-  // Tabla proveedores
-  provEl.innerHTML = !PR.length ? '<div class="dt-empty">Sin proveedores registrados.</div>' : `
-    <div class="dt-head" style="grid-template-columns:50px 2fr 140px 1fr 80px"><span>#</span><span>Razón Social</span><span>RFC</span><span>Ciudad / Estado</span><span>Estatus</span></div>
-    ${PR.map(r=>`<div class="dt-row" style="grid-template-columns:50px 2fr 140px 1fr 80px">
-      <div class="dt-id">${r.id}</div><div class="dt-main">${r.razon_social}</div>
-      <div style="font-family:monospace;font-size:12px;font-weight:600">${r.rfc}</div>
-      <div class="dt-sub">${r.ciudad||'—'}${r.estado?', '+r.estado:''}</div>
-      <div><span class="${r.activo?'dt-badge-green':'dt-badge-red'}">${r.activo?'Activo':'Inactivo'}</span></div>
-    </div>`).join('')}`;
+  if (!P.length) {
+    prodEl.innerHTML = '<div class="dt-empty">Sin productos registrados.</div>';
+  } else {
+    prodEl.innerHTML = '<div class="dt-head" style="grid-template-columns:50px 2fr 1fr 100px 80px"><span>#</span><span>Nombre</span><span>Unidad</span><span>Precio</span><span>Stock</span></div>' +
+      P.map(function(r){ return renderProdRow(r, uMap); }).join('');
+  }
+
+  if (!PR.length) {
+    provEl.innerHTML = '<div class="dt-empty">Sin proveedores registrados.</div>';
+  } else {
+    provEl.innerHTML = '<div class="dt-head" style="grid-template-columns:50px 2fr 140px 1fr 80px"><span>#</span><span>Razón Social</span><span>RFC</span><span>Ciudad / Estado</span><span>Estatus</span></div>' +
+      PR.map(function(r){ return renderProvRow(r); }).join('');
+  }
 }
 
 async function loadReporteMovimientos() {
-  const cardsEl = document.getElementById('reporte-mov-cards');
-  const eEl = document.getElementById('reporte-entradas-tabla');
-  const sEl = document.getElementById('reporte-salidas-tabla');
+  var cardsEl = document.getElementById('reporte-mov-cards');
+  var eEl = document.getElementById('reporte-entradas-tabla');
+  var sEl = document.getElementById('reporte-salidas-tabla');
+  var loading = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
 
-  cardsEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  eEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
-  sEl.innerHTML = '<div class="dt-loading"><div class="spinner"></div>Cargando…</div>';
+  cardsEl.innerHTML = loading;
+  eEl.innerHTML = loading;
+  sEl.innerHTML = loading;
 
-  const [entR, salR] = await Promise.allSettled([
-    api('GET',`${API}/entradas`),
-    api('GET',`${API}/salidas`),
-  ]);
+  var ents=[], sals=[];
+  try { ents = await api('GET', API+'/entradas'); } catch(e) {}
+  try { sals = await api('GET', API+'/salidas'); } catch(e) {}
 
-  const ents = entR.status==='fulfilled' ? entR.value : [];
-  const sals = salR.status==='fulfilled' ? salR.value : [];
-  const montoE = ents.reduce((s,e)=>s+parseFloat(e.total||0),0);
-  const montoS = sals.reduce((s,e)=>s+parseFloat(e.total||0),0);
+  var montoE = ents.reduce(function(s,e){ return s+parseFloat(e.total||0); }, 0);
+  var montoS = sals.reduce(function(s,e){ return s+parseFloat(e.total||0); }, 0);
 
-  cardsEl.innerHTML = `
-    <div class="report-card green"><div class="rc-num">${ents.length}</div><div class="rc-lbl">Total Entradas</div></div>
-    <div class="report-card green"><div class="rc-num">$${montoE.toFixed(2)}</div><div class="rc-lbl">Monto Entradas</div></div>
-    <div class="report-card red"><div class="rc-num">${sals.length}</div><div class="rc-lbl">Total Salidas</div></div>
-    <div class="report-card red"><div class="rc-num">$${montoS.toFixed(2)}</div><div class="rc-lbl">Monto Salidas</div></div>
-  `;
+  cardsEl.innerHTML =
+    '<div class="report-card green"><div class="rc-num">'+ents.length+'</div><div class="rc-lbl">Total Entradas</div></div>' +
+    '<div class="report-card green"><div class="rc-num">$'+montoE.toFixed(2)+'</div><div class="rc-lbl">Monto Entradas</div></div>' +
+    '<div class="report-card red"><div class="rc-num">'+sals.length+'</div><div class="rc-lbl">Total Salidas</div></div>' +
+    '<div class="report-card red"><div class="rc-num">$'+montoS.toFixed(2)+'</div><div class="rc-lbl">Monto Salidas</div></div>';
 
-  eEl.innerHTML = !ents.length ? '<div class="dt-empty">Sin entradas registradas.</div>' : `
-    <div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Proveedor</span><span>Total</span></div>
-    ${ents.slice(0,10).map(r=>`<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">
-      <div class="dt-id">${r.id}</div><div style="font-size:13px">${r.fecha||'—'}</div>
-      <div class="dt-sub">${r.proveedor||'—'}</div>
-      <div style="font-weight:700;color:#15803d">$${parseFloat(r.total||0).toFixed(2)}</div>
-    </div>`).join('')}`;
+  if (!ents.length) {
+    eEl.innerHTML = '<div class="dt-empty">Sin entradas registradas.</div>';
+  } else {
+    eEl.innerHTML = '<div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Proveedor</span><span>Total</span></div>' +
+      ents.slice(0,10).map(function(r){
+        return '<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">' +
+          '<div class="dt-id">'+r.id+'</div><div>'+( r.fecha||'—')+'</div>' +
+          '<div class="dt-sub">'+(r.proveedor||'—')+'</div>' +
+          '<div style="font-weight:700;color:#15803d">$'+parseFloat(r.total||0).toFixed(2)+'</div></div>';
+      }).join('');
+  }
 
-  sEl.innerHTML = !sals.length ? '<div class="dt-empty">Sin salidas registradas.</div>' : `
-    <div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Destino</span><span>Total</span></div>
-    ${sals.slice(0,10).map(r=>`<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">
-      <div class="dt-id">${r.id}</div><div style="font-size:13px">${r.fecha||'—'}</div>
-      <div class="dt-sub">${r.destino||'—'}</div>
-      <div style="font-weight:700;color:#dc2626">$${parseFloat(r.total||0).toFixed(2)}</div>
-    </div>`).join('')}`;
+  if (!sals.length) {
+    sEl.innerHTML = '<div class="dt-empty">Sin salidas registradas.</div>';
+  } else {
+    sEl.innerHTML = '<div class="dt-head" style="grid-template-columns:50px 90px 1fr 90px"><span>#</span><span>Fecha</span><span>Destino</span><span>Total</span></div>' +
+      sals.slice(0,10).map(function(r){
+        return '<div class="dt-row" style="grid-template-columns:50px 90px 1fr 90px">' +
+          '<div class="dt-id">'+r.id+'</div><div>'+(r.fecha||'—')+'</div>' +
+          '<div class="dt-sub">'+(r.destino||'—')+'</div>' +
+          '<div style="font-weight:700;color:#dc2626">$'+parseFloat(r.total||0).toFixed(2)+'</div></div>';
+      }).join('');
+  }
 }
 
 // ── Entradas & Salidas ──────────────────────────────────────────────────────
